@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/ADTRAN/netconf_client.svg?branch=master)](https://travis-ci.org/ADTRAN/netconf_client)
-TODO: pypi link
+[PyPI](https://pypi.org/project/netconf-client/)
 TODO: rtd link
 
 # netconf_client
