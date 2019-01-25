@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/ADTRAN/netconf_client.svg?branch=master)](https://travis-ci.org/ADTRAN/netconf_client)
-[PyPI](https://pypi.org/project/netconf-client/)
-TODO: rtd link
+[![PyPI version](https://badge.fury.io/py/netconf-client.svg)](https://badge.fury.io/py/netconf-client)
+[![Documentation Status](https://readthedocs.org/projects/netconf-client/badge/?version=latest)](https://netconf-client.readthedocs.io/en/latest/?badge=latest)
 
 # netconf_client
 
