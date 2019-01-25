@@ -2,4 +2,3 @@ lxml
 six
 futures
 paramiko
-twine
