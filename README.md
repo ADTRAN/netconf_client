@@ -19,7 +19,7 @@ mgr.edit_config(config="""<config> ... </config>""")
 print(mgr.get(filter="""<filter> ... </filter>""").data_xml)
 ```
 
-More complete documentation can be found in the User Guide
+More complete documentation can be found in the [User Guide]
 
 ## Comparison with `ncclient`
 
@@ -38,3 +38,6 @@ And a few disadvantages:
  - `netconf_client` does a lot less error checking and assumes you're
    sending valid messages to the server (however this can be useful
    for testing edge-case behavior of a server)
+
+
+[User Guide]: https://netconf-client.readthedocs.io/en/latest/
