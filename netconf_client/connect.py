@@ -123,20 +123,27 @@ class CallhomeManager:
 
     """
 
-    def __init__(self, bind_to="", port=4334):
+    def __init__(self, bind_to="", port=4334, backlog=1):
         self.bind_to = bind_to
         self.port = port
         self.server_socket = None
+        self.backlog = backlog
 
     def __enter__(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.bind_to, self.port))
-        self.server_socket.listen(0)
+        self.server_socket.listen(self.backlog)
         return self
 
-    def accept_one(self):
-        """Accept a single TCP client and returns it"""
+    def accept_one(self, timeout=120):
+        """Accept a single TCP client and returns it
+
+        :param int timeout: Seconds to wait for an incoming connection
+
+        """
+        self.server_socket.settimeout(timeout)
         (sock, remote_host) = self.server_socket.accept()
+        self.server_socket.settimeout(None)
         logger.info("Callhome connection initiated from remote host %s", remote_host)
         return sock
 
@@ -146,7 +153,7 @@ class CallhomeManager:
         This function takes the same arguments as :func:`connect_ssh`
 
         """
-        sock = self.accept_one()
+        sock = self.accept_one(timeout=kwds.get("timeout", 120))
         kwds["sock"] = sock
         return connect_ssh(*args, **kwds)
 
@@ -156,11 +163,12 @@ class CallhomeManager:
         This function takes the same arguments as :func:`connect_tls`
 
         """
-        sock = self.accept_one()
+        sock = self.accept_one(timeout=kwds.get("timeout", 120))
         kwds["sock"] = sock
         return connect_tls(*args, **kwds)
 
     def __exit__(self, _, __, ___):
+        self.server_socket.shutdown(socket.SHUT_RDWR)
         self.server_socket.close()
 
 
