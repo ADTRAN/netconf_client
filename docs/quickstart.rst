@@ -45,7 +45,7 @@ node, and then run a ``<get-config>`` to see the change.::
   with connect_ssh(host='192.0.2.1',
                    port=830,
                    username='admin',
-                   password='password') as sesssion:
+                   password='password') as session:
       mgr = Manager(session, timeout=120)
       mgr.edit_config(target='running', '''
           <config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
