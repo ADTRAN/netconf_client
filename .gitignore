@@ -81,6 +81,8 @@ ENV/
 # Eclipse project settings
 .project
 .pydevproject
+.cproject
+.settings/
 
 # Generated files ignore
 *~
