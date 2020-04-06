@@ -6,6 +6,7 @@ install:
 - pip install tox-travis
 script:
 - tox
+- bash <(curl -s https://codecov.io/bash) -f .tox/py3-testcoverage.xml -f .tox/py27-testcoverage.xml
 deploy:
   provider: pypi
   user: adtran-automation
