@@ -1,6 +1,8 @@
 [![Build Status](https://travis-ci.org/ADTRAN/netconf_client.svg?branch=master)](https://travis-ci.org/ADTRAN/netconf_client)
 [![PyPI version](https://badge.fury.io/py/netconf-client.svg)](https://badge.fury.io/py/netconf-client)
 [![Documentation Status](https://readthedocs.org/projects/netconf-client/badge/?version=latest)](https://netconf-client.readthedocs.io/en/latest/?badge=latest)
+[![codecov](https://codecov.io/gh/ADTRAN/netconf_client/branch/master/graph/badge.svg)](https://codecov.io/gh/ADTRAN/netconf_client)
+
 
 # netconf_client
 
