@@ -115,43 +115,6 @@ class Manager:
         """Sets the log level to use for logging"""
         self.log_level = level
 
-    def get_peer_ip(self):
-        """Returns the peer's IP address.
-           If not connected, an empty string is returned.
-        """
-
-        addr = ""
-        try:
-            s = self.session.sock.sock
-            (addr, _) = s.getpeername()
-        except:
-            pass
-        return addr
-
-    def get_request_log_id(self):
-        """Returns string containing device type, device num (if any),
-           and IP address
-        """
-        peer_ip = self.get_peer_ip()
-        if self.log_id:
-            if peer_ip:
-                return " => {} ({})".format(self.log_id, peer_ip)
-            return " => {}".format(self.log_id)
-        if peer_ip:
-            return " => {}".format(peer_ip)
-        return ""
-
-    def get_response_log_id(self):
-        """Returns string containing device type and device num (if any),
-           IP address otherwise
-        """
-        if self.log_id:
-            return " <= {}".format(self.log_id)
-        peer_ip = self.get_peer_ip()
-        if peer_ip:
-            return " <= {}".format(peer_ip)
-        return ""
-
     def get_logged_functions(self):
         """Returns a dict 'str'->'Boolean' of function names to be logged"""
         return self.logged_functions
@@ -178,9 +141,46 @@ class Manager:
             self.get_log_level()
         )
 
+    def _get_peer_ip(self):
+        """Returns the peer's IP address.
+           If not connected, an empty string is returned.
+        """
+
+        addr = ""
+        try:
+            s = self.session.sock.sock
+            (addr, _) = s.getpeername()
+        except:
+            pass
+        return addr
+
+    def _get_request_log_id(self):
+        """Returns string containing device type, device num (if any),
+           and IP address
+        """
+        peer_ip = self._get_peer_ip()
+        if self.log_id:
+            if peer_ip:
+                return " => {} ({})".format(self.log_id, peer_ip)
+            return " => {}".format(self.log_id)
+        if peer_ip:
+            return " => {}".format(peer_ip)
+        return ""
+
+    def _get_response_log_id(self):
+        """Returns string containing device type and device num (if any),
+           IP address otherwise
+        """
+        if self.log_id:
+            return " <= {}".format(self.log_id)
+        peer_ip = self._get_peer_ip()
+        if peer_ip:
+            return " <= {}".format(peer_ip)
+        return ""
+
     def _log_rpc_request(self, rpc_xml, funcname):
         if self._is_logger_enabled(funcname):
-            conn_id = self.get_request_log_id()
+            conn_id = self._get_request_log_id()
             self.start_time = self._get_timestamp()
             pretty = pretty_xml(rpc_xml)
 
@@ -195,7 +195,7 @@ class Manager:
     def _log_rpc_response(self, rpc_xml, funcname):
         if self._is_logger_enabled(funcname):
             end_time = self._get_timestamp()
-            conn_id = self.get_response_log_id()
+            conn_id = self._get_response_log_id()
 
             taken = end_time - self.start_time
             taken_formatted = "%d.%03d" % (taken.seconds, taken.microseconds / 1000)
@@ -213,7 +213,7 @@ class Manager:
     def _log_rpc_failure(self, message, funcname):
         if self._is_logger_enabled(funcname):
             end_time = self._get_timestamp()
-            conn_id = self.get_response_log_id()
+            conn_id = self._get_response_log_id()
 
             taken = end_time - self.start_time
             # we accept a small rounding error of 0.5 ms
@@ -230,12 +230,12 @@ class Manager:
                 message,
             )
 
-    def send_rpc(self, rpc_xml):
-        """Send given NC request message and expect an NC response
+    def _send_rpc(self, rpc_xml):
+        """Send given NC request message and expect a NC response
 
            Both, the NC request and response messages are logged with timestamp.
            In case of failure or exceptions, the error cause is logged, if known.
-           Exceptions thrown by functions called by send_rpc() are re-raised
+           Exceptions thrown by functions called by _send_rpc() are re-raised
            after they have been logged.
 
            :param str rpc_xml: XML RPC message to sent to NC server
@@ -253,9 +253,9 @@ class Manager:
             r = f.result(timeout=self.timeout)
             if not r:
                 self._log_rpc_failure("RPC returned without result", funcname)
-                return (raw, ele)
-            (raw, ele) = f.result(timeout=self.timeout)
-            self._log_rpc_response(raw, funcname)
+            else:
+                (raw, ele) = f.result(timeout=self.timeout)
+                self._log_rpc_response(raw, funcname)
         except CancelledError:
             self._log_rpc_failure("RPC cancelled", funcname)
             raise
@@ -308,7 +308,7 @@ class Manager:
         rpc_xml = edit_config(
             config, target, default_operation, test_option, error_option
         )
-        self.send_rpc(rpc_xml)
+        self._send_rpc(rpc_xml)
 
     def get(self, filter=None, with_defaults=None):
         """Send a ``<get>`` request
@@ -326,7 +326,7 @@ class Manager:
         :rtype: :class:`DataReply`
         """
         rpc_xml = get(filter=convert_filter(filter), with_defaults=with_defaults)
-        (raw, ele) = self.send_rpc(rpc_xml)
+        (raw, ele) = self._send_rpc(rpc_xml)
         return DataReply(raw, ele)
 
     def get_config(self, source="running", filter=None, with_defaults=None):
@@ -349,7 +349,7 @@ class Manager:
         rpc_xml = get_config(
             source=source, filter=convert_filter(filter), with_defaults=with_defaults,
         )
-        (raw, ele) = self.send_rpc(rpc_xml)
+        (raw, ele) = self._send_rpc(rpc_xml)
         return DataReply(raw, ele)
 
     def copy_config(self, target, source, with_defaults=None):
@@ -367,11 +367,11 @@ class Manager:
                                   'trim', or 'explicit'.
         """
         rpc_xml = copy_config(target=target, source=source, with_defaults=with_defaults)
-        self.send_rpc(rpc_xml)
+        self._send_rpc(rpc_xml)
 
     def discard_changes(self):
         """Send a ``<discard-changes>`` request"""
-        self.send_rpc(discard_changes())
+        self._send_rpc(discard_changes())
 
     def commit(
         self, confirmed=False, confirm_timeout=None, persist=None, persist_id=None
@@ -403,32 +403,32 @@ class Manager:
             persist=persist,
             persist_id=persist_id,
         )
-        self.send_rpc(rpc_xml)
+        self._send_rpc(rpc_xml)
 
     def lock(self, target):
         """Send a ``<lock>`` request
 
         :param str target: The datastore to be locked
         """
-        self.send_rpc(lock(target))
+        self._send_rpc(lock(target))
 
     def unlock(self, target):
         """Send an ``<unlock>`` request
 
         :param str target: The datastore to be unlocked
         """
-        self.send_rpc(unlock(target))
+        self._send_rpc(unlock(target))
 
     def kill_session(self, session_id):
         """Send a ``<kill-session>`` request
 
         :param int session_id: The session to be killed
         """
-        self.send_rpc(kill_session(session_id))
+        self._send_rpc(kill_session(session_id))
 
     def close_session(self):
         """Send a ``<close-session>`` request"""
-        self.send_rpc(close_session())
+        self._send_rpc(close_session())
 
     def create_subscription(
         self, stream=None, filter=None, start_time=None, stop_time=None
@@ -447,14 +447,14 @@ class Manager:
         rpc_xml = create_subscription(
             stream=stream, filter=filter, start_time=start_time, stop_time=stop_time
         )
-        self.send_rpc(rpc_xml)
+        self._send_rpc(rpc_xml)
 
     def validate(self, source):
         """Send a ``<validate>`` request
 
         :param str source: The datastore to validate
         """
-        self.send_rpc(validate(source))
+        self._send_rpc(validate(source))
 
     @property
     def session_id(self):
@@ -488,7 +488,7 @@ class Manager:
 
         :rtype: :class:`RPCReply`
         """
-        (msg, _) = self.send_rpc(make_rpc(from_ele(rpc)))
+        (msg, _) = self._send_rpc(make_rpc(from_ele(rpc)))
         return RPCReply(msg)
 
     def delete_config(self, target):
@@ -496,7 +496,7 @@ class Manager:
 
         :param str target: The datastore to delete
         """
-        self.send_rpc(delete_config(target))
+        self._send_rpc(delete_config(target))
 
 
 class DataReply:
