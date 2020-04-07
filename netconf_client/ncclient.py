@@ -1,4 +1,5 @@
 from datetime import datetime
+from socket import error as socket_error
 import logging
 import inspect
 from concurrent.futures import CancelledError, TimeoutError
@@ -25,10 +26,10 @@ from netconf_client.rpc import (
 
 
 # Defines the scope for netconf traces
-logger = logging.getLogger("netconf_client_pretty")
+_logger = logging.getLogger("netconf_client.manager")
 
 
-def pretty_xml(xml):
+def _pretty_xml(xml):
     """Reformats a given string containing an XML document (for human readable output)"""
 
     parser = etree.XMLParser(remove_blank_text=True)
@@ -45,13 +46,16 @@ class Manager:
     This class is also a context manager and can be used with `with`
     statements to automatically close the underlying session.
 
-    NetConf requests and responses are logged using the 'netconf_client' scope.
-    The API functions, which are to be logged, can be configured (default: all but 'close_session').
-    Also the log level can be changed via API (logger.DEBUG is the default).
+    NetConf requests and responses are logged using the ``netconf_client.manager`` scope.
+    The log level is logger.DEBUG.
 
-    Each log entry shows a log ID (the peer's IP address as default).
-    Also a timestamp is printed for each request/response message and the round-trip delay
-    between request and its response is computed and displayed.
+    Each log entry shows a log ID (the peers' IP addresses as default).
+    Additionally, the round-trip delay between request and its response is
+    computed and displayed.
+
+    The Python logger receives a dictionary via `extra` parameter, whose
+    key is ``nc_function`` and which contains the name of the API function
+    being logged. This information can be used for user-specific filtering.
 
     :ivar float timeout: Duration in seconds to wait for a reply
 
@@ -59,7 +63,6 @@ class Manager:
                    :class:`netconf_client.session.Session` connected
                    to the server
     :ivar str log_id: application-specific log ID (None as default)
-    :ivar int log_level: logging level (logging.DEBUG as default)
 
     """
 
@@ -70,31 +73,15 @@ class Manager:
         :type session: :class:`netconf_client.session.Session`
 
         :param float timeout: Duration in seconds to wait for replies
-        :param string log_id: log ID string printed with each log entry,
-               the peer's IP address as default
+        :param string log_id: log ID string additionally printed with
+               each log entry
         """
         self.timeout = timeout
         self.session = session
         self.log_id = log_id
-        self.start_time = self._get_timestamp()
-        self.log_level = logging.DEBUG
-
-        self.logged_functions = {
-            "get": True,
-            "edit_config": True,
-            "get_config": True,
-            "copy_config": True,
-            "discard_changes": True,
-            "commit": True,
-            "lock": True,
-            "unlock": True,
-            "kill_session": True,
-            "create_subscription": True,
-            "validate": True,
-            "delete_config": True,
-            "dispatch": True,
-            "close_session": False,
-        }
+        self._start_time = self._get_timestamp()
+        self._local_ip = None
+        self._peer_ip = None
 
     def __enter__(self):
         return self
@@ -103,131 +90,90 @@ class Manager:
         self.session.__exit__(a, b, c)
 
     @staticmethod
-    def get_logger():
+    def logger():
         """Returns the internally used logger instance (same for all sessions)"""
-        return logger
-
-    def get_log_level(self):
-        """Returns current logging level, default is DEBUG"""
-        return self.log_level
-
-    def set_log_level(self, level=logging.DEBUG):
-        """Sets the log level to use for logging"""
-        self.log_level = level
-
-    def get_logged_functions(self):
-        """Returns a dict 'str'->'Boolean' of function names to be logged"""
-        return self.logged_functions
-
-    def is_function_logged(self, funcname):
-        """Checks whether a given function is enabled for logging"""
-        return self.logged_functions.get(funcname, False)
-
-    def enable_logging(self, funcname):
-        """Enables logging for given function name"""
-        if funcname in self.logged_functions:
-            self.logged_functions.update({funcname: True})
-
-    def disable_logging(self, funcname):
-        """Disables logging for given function name"""
-        if funcname in self.logged_functions:
-            self.logged_functions.update({funcname: False})
+        return _logger
 
     def _get_timestamp(self):
         return datetime.now()
 
-    def _is_logger_enabled(self, funcname):
-        return self.is_function_logged(funcname) and Manager.get_logger().isEnabledFor(
-            self.get_log_level()
-        )
+    def _is_logger_enabled(self):
+        return Manager.logger().isEnabledFor(logging.DEBUG)
 
-    def _get_peer_ip(self):
-        """Returns the peer's IP address.
-           If not connected, an empty string is returned.
-        """
+    def _fetch_connection_ip(self):
+        """Retrieves and stores the connection's local and remote IP"""
 
-        addr = ""
+        self._local_ip = None
+        self._peer_ip = None
         try:
-            s = self.session.sock.sock
-            (addr, _) = s.getpeername()
-        except:
+            (self._local_ip, _) = self.session.sock.sock.getsockname()
+            (self._peer_ip, _) = self.session.sock.sock.getpeername()
+        except socket_error:
             pass
-        return addr
 
-    def _get_request_log_id(self):
-        """Returns string containing device type, device num (if any),
-           and IP address
-        """
-        peer_ip = self._get_peer_ip()
-        if self.log_id:
-            if peer_ip:
-                return " => {} ({})".format(self.log_id, peer_ip)
-            return " => {}".format(self.log_id)
-        if peer_ip:
-            return " => {}".format(peer_ip)
-        return ""
+    def _get_connection_info(self, direction):
+        """Returns detailed connection info for logging"""
 
-    def _get_response_log_id(self):
-        """Returns string containing device type and device num (if any),
-           IP address otherwise
-        """
+        result = ""
         if self.log_id:
-            return " <= {}".format(self.log_id)
-        peer_ip = self._get_peer_ip()
-        if peer_ip:
-            return " <= {}".format(peer_ip)
-        return ""
+            if self._local_ip and self._peer_ip:
+                result = " ({}) {} {} ({})".format(
+                    self._local_ip, direction, self.log_id, self._peer_ip
+                )
+            else:
+                result = " {} {}".format(direction, self.log_id)
+        else:
+            if self._local_ip and self._peer_ip:
+                result = " {} {} {}".format(self._local_ip, direction, self._peer_ip)
+        return result
 
     def _log_rpc_request(self, rpc_xml, funcname):
-        if self._is_logger_enabled(funcname):
-            conn_id = self._get_request_log_id()
-            self.start_time = self._get_timestamp()
-            pretty = pretty_xml(rpc_xml)
+        if self._is_logger_enabled():
+            self._fetch_connection_ip()
+            conn_id = self._get_connection_info("=>")
+            self._start_time = self._get_timestamp()
+            pretty = _pretty_xml(rpc_xml)
 
-            Manager.get_logger().log(
-                self.get_log_level(),
-                "%s: NC Request%s:\n%s",
-                self.start_time,
+            Manager.logger().debug(
+                "NC Request%s:\n%s",
                 conn_id,
                 pretty,
+                extra={"ncclient.Manager.funcname": funcname},
             )
 
     def _log_rpc_response(self, rpc_xml, funcname):
-        if self._is_logger_enabled(funcname):
+        if self._is_logger_enabled():
             end_time = self._get_timestamp()
-            conn_id = self._get_response_log_id()
+            conn_id = self._get_connection_info("<=")
 
-            taken = end_time - self.start_time
+            taken = end_time - self._start_time
             taken_formatted = "%d.%03d" % (taken.seconds, taken.microseconds / 1000)
-            pretty = pretty_xml(rpc_xml) if rpc_xml else "(None)"
+            pretty = _pretty_xml(rpc_xml) if rpc_xml else "(None)"
 
-            Manager.get_logger().log(
-                self.get_log_level(),
-                "%s: NC Response%s (%s sec):\n%s",
-                end_time,
+            Manager.logger().debug(
+                "NC Response%s (%s sec):\n%s",
                 conn_id,
                 taken_formatted,
                 pretty,
+                extra={"ncclient.Manager.funcname": funcname},
             )
 
     def _log_rpc_failure(self, message, funcname):
-        if self._is_logger_enabled(funcname):
+        if self._is_logger_enabled():
             end_time = self._get_timestamp()
-            conn_id = self._get_response_log_id()
+            conn_id = self._get_connection_info("<=")
 
-            taken = end_time - self.start_time
-            # we accept a small rounding error of 0.5 ms
+            taken = end_time - self._start_time
             taken_formatted = "%d.%03d" % (taken.seconds, taken.microseconds / 1000)
             if message:
                 message = "Cause: {}\n".format(message)
 
-            Manager.get_logger().log(
-                self.get_log_level(),
-                "%s: NC Failure %s (%s sec)\n%s",
-                end_time,
+            Manager.logger().debug(
+                "NC Failure %s (%s sec)\n%s",
                 conn_id,
                 taken_formatted,
                 message,
+                extra={"ncclient.Manager.funcname": funcname},
             )
 
     def _send_rpc(self, rpc_xml):
@@ -269,9 +215,6 @@ class Manager:
             if not message:
                 message = type(e)
             self._log_rpc_failure("RPC exception: {}".format(message), funcname)
-            raise
-        except:
-            self._log_rpc_failure("RPC exception", funcname)
             raise
 
         return (raw, ele)
