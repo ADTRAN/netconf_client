@@ -46,7 +46,7 @@ class Manager:
     This class is also a context manager and can be used with `with`
     statements to automatically close the underlying session.
 
-    NetConf requests and responses are logged using the ``netconf_client.manager`` scope.
+    NETCONF requests and responses are logged using the ``netconf_client.manager`` scope.
     The log level is logger.DEBUG.
 
     Each log entry shows a log ID (the peers' IP addresses as default).
