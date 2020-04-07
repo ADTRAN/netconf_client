@@ -54,8 +54,9 @@ class Manager:
     computed and displayed.
 
     The Python logger receives a dictionary via `extra` parameter, whose
-    key is ``nc_function`` and which contains the name of the API function
-    being logged. This information can be used for user-specific filtering.
+    key is ``ncclient.Manager.funcname`` and which contains the name of
+    the API function being logged.
+    This information can be used for user-specific filtering.
 
     :ivar float timeout: Duration in seconds to wait for a reply
 
