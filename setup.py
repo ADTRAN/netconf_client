@@ -21,6 +21,7 @@ setup(
     version=version,
     description="A Python NETCONF client",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     url="https://github.com/ADTRAN/netconf_client",
     author="ADTRAN, Inc.",
     packages=find_packages(),
