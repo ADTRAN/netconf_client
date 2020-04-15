@@ -1,6 +1,10 @@
+from datetime import datetime
+from socket import error as socket_error
+import logging
+import inspect
+from concurrent.futures import CancelledError, TimeoutError
 from six.moves.queue import Empty
 from lxml import etree
-
 
 from netconf_client.error import RpcError
 from netconf_client.rpc import (
@@ -21,8 +25,20 @@ from netconf_client.rpc import (
 )
 
 
+# Defines the scope for netconf traces
+_logger = logging.getLogger("netconf_client.manager")
+
+
+def _pretty_xml(xml):
+    """Reformats a given string containing an XML document (for human readable output)"""
+
+    parser = etree.XMLParser(remove_blank_text=True)
+    tree = etree.fromstring(xml, parser)
+    return etree.tostring(tree, pretty_print=True).decode()
+
+
 class Manager:
-    """A helper class for performing common NETCONF operations
+    """A helper class for performing common NETCONF operations with pretty logging.
 
     This class attempts to be API compatible with the manager object
     from the original ncclient.
@@ -30,30 +46,176 @@ class Manager:
     This class is also a context manager and can be used with `with`
     statements to automatically close the underlying session.
 
+    NETCONF requests and responses are logged using the ``netconf_client.manager`` scope.
+    The log level is logger.DEBUG.
+
+    Each log entry shows a log ID (the peers' IP addresses as default).
+    Additionally, the round-trip delay between request and its response is
+    computed and displayed.
+
+    The Python logger receives a dictionary via `extra` parameter, whose
+    key is ``ncclient.Manager.funcname`` and which contains the name of
+    the API function being logged.
+    This information can be used for user-specific filtering.
+
     :ivar float timeout: Duration in seconds to wait for a reply
 
     :ivar session: The underlying
                    :class:`netconf_client.session.Session` connected
                    to the server
+    :ivar str log_id: application-specific log ID (None as default)
 
     """
 
-    def __init__(self, session, timeout=120):
+    def __init__(self, session, timeout=120, log_id=None):
         """Construct a new Manager object
 
         :param session: The low-level NETCONF session to use for requests
         :type session: :class:`netconf_client.session.Session`
 
         :param float timeout: Duration in seconds to wait for replies
+        :param string log_id: log ID string additionally printed with
+               each log entry
         """
         self.timeout = timeout
         self.session = session
+        self.log_id = log_id
+        self._start_time = self._get_timestamp()
+        self._local_ip = None
+        self._peer_ip = None
 
     def __enter__(self):
         return self
 
     def __exit__(self, a, b, c):
         self.session.__exit__(a, b, c)
+
+    @staticmethod
+    def logger():
+        """Returns the internally used logger instance (same for all sessions)"""
+        return _logger
+
+    def _get_timestamp(self):
+        return datetime.now()
+
+    def _is_logger_enabled(self):
+        return Manager.logger().isEnabledFor(logging.DEBUG)
+
+    def _fetch_connection_ip(self):
+        """Retrieves and stores the connection's local and remote IP"""
+
+        self._local_ip = None
+        self._peer_ip = None
+        try:
+            (self._local_ip, _) = self.session.sock.sock.getsockname()
+            (self._peer_ip, _) = self.session.sock.sock.getpeername()
+        except socket_error:
+            pass
+
+    def _get_connection_info(self, direction):
+        """Returns detailed connection info for logging"""
+
+        result = ""
+        if self.log_id:
+            if self._local_ip and self._peer_ip:
+                result = " ({}) {} {} ({})".format(
+                    self._local_ip, direction, self.log_id, self._peer_ip
+                )
+            else:
+                result = " {} {}".format(direction, self.log_id)
+        else:
+            if self._local_ip and self._peer_ip:
+                result = " {} {} {}".format(self._local_ip, direction, self._peer_ip)
+        return result
+
+    def _log_rpc_request(self, rpc_xml, funcname):
+        if self._is_logger_enabled():
+            self._fetch_connection_ip()
+            conn_id = self._get_connection_info("=>")
+            self._start_time = self._get_timestamp()
+            pretty = _pretty_xml(rpc_xml)
+
+            Manager.logger().debug(
+                "NC Request%s:\n%s",
+                conn_id,
+                pretty,
+                extra={"ncclient.Manager.funcname": funcname},
+            )
+
+    def _log_rpc_response(self, rpc_xml, funcname):
+        if self._is_logger_enabled():
+            end_time = self._get_timestamp()
+            conn_id = self._get_connection_info("<=")
+
+            taken = end_time - self._start_time
+            taken_formatted = "%d.%03d" % (taken.seconds, taken.microseconds / 1000)
+            pretty = _pretty_xml(rpc_xml) if rpc_xml else "(None)"
+
+            Manager.logger().debug(
+                "NC Response%s (%s sec):\n%s",
+                conn_id,
+                taken_formatted,
+                pretty,
+                extra={"ncclient.Manager.funcname": funcname},
+            )
+
+    def _log_rpc_failure(self, message, funcname):
+        if self._is_logger_enabled():
+            end_time = self._get_timestamp()
+            conn_id = self._get_connection_info("<=")
+
+            taken = end_time - self._start_time
+            taken_formatted = "%d.%03d" % (taken.seconds, taken.microseconds / 1000)
+            message = "Cause: {}\n".format(message)
+
+            Manager.logger().debug(
+                "NC Failure%s (%s sec)\n%s",
+                conn_id,
+                taken_formatted,
+                message,
+                extra={"ncclient.Manager.funcname": funcname},
+            )
+
+    def _send_rpc(self, rpc_xml):
+        """Send given NC request message and expect a NC response
+
+           Both, the NC request and response messages are logged with timestamp.
+           In case of failure or exceptions, the error cause is logged, if known.
+           Exceptions thrown by functions called by _send_rpc() are re-raised
+           after they have been logged.
+
+           :param str rpc_xml: XML RPC message to sent to NC server
+
+           :rtype :tupel: (`str` raw XML response, `ElementTree`: Element Tree or None)
+           :exception: whatever exceptions raised by /netconf-client/netconf_client/ncclient.py
+        """
+
+        (raw, ele) = (None, None)
+        funcname = inspect.stack()[1][3]
+        self._log_rpc_request(rpc_xml, funcname)
+
+        try:
+            f = self.session.send_rpc(rpc_xml)
+            r = f.result(timeout=self.timeout)
+            if not r:
+                self._log_rpc_failure("RPC returned without result", funcname)
+            else:
+                (raw, ele) = f.result(timeout=self.timeout)
+                self._log_rpc_response(raw, funcname)
+        except CancelledError:
+            self._log_rpc_failure("RPC cancelled", funcname)
+            raise
+        except TimeoutError:
+            self._log_rpc_failure(
+                "RPC timeout (max. {} seconds)".format(self.timeout), funcname
+            )
+            raise
+        except Exception as e:
+            message = str(e)
+            self._log_rpc_failure("RPC exception: {}".format(message), funcname)
+            raise
+
+        return (raw, ele)
 
     def edit_config(
         self,
@@ -84,10 +246,10 @@ class Manager:
                                  'rollback-on-error'
 
         """
-        f = self.session.send_rpc(
-            edit_config(config, target, default_operation, test_option, error_option)
+        rpc_xml = edit_config(
+            config, target, default_operation, test_option, error_option
         )
-        f.result(timeout=self.timeout)
+        self._send_rpc(rpc_xml)
 
     def get(self, filter=None, with_defaults=None):
         """Send a ``<get>`` request
@@ -104,10 +266,8 @@ class Manager:
 
         :rtype: :class:`DataReply`
         """
-        f = self.session.send_rpc(
-            get(filter=convert_filter(filter), with_defaults=with_defaults)
-        )
-        (raw, ele) = f.result(timeout=self.timeout)
+        rpc_xml = get(filter=convert_filter(filter), with_defaults=with_defaults)
+        (raw, ele) = self._send_rpc(rpc_xml)
         return DataReply(raw, ele)
 
     def get_config(self, source="running", filter=None, with_defaults=None):
@@ -127,14 +287,10 @@ class Manager:
         :rtype: :class:`DataReply`
 
         """
-        f = self.session.send_rpc(
-            get_config(
-                source=source,
-                filter=convert_filter(filter),
-                with_defaults=with_defaults,
-            )
+        rpc_xml = get_config(
+            source=source, filter=convert_filter(filter), with_defaults=with_defaults,
         )
-        (raw, ele) = f.result(timeout=self.timeout)
+        (raw, ele) = self._send_rpc(rpc_xml)
         return DataReply(raw, ele)
 
     def copy_config(self, target, source, with_defaults=None):
@@ -151,15 +307,12 @@ class Manager:
                                   'report-all', 'report-all-tagged',
                                   'trim', or 'explicit'.
         """
-        f = self.session.send_rpc(
-            copy_config(target=target, source=source, with_defaults=with_defaults)
-        )
-        f.result(timeout=self.timeout)
+        rpc_xml = copy_config(target=target, source=source, with_defaults=with_defaults)
+        self._send_rpc(rpc_xml)
 
     def discard_changes(self):
         """Send a ``<discard-changes>`` request"""
-        f = self.session.send_rpc(discard_changes())
-        f.result(timeout=self.timeout)
+        self._send_rpc(discard_changes())
 
     def commit(
         self, confirmed=False, confirm_timeout=None, persist=None, persist_id=None
@@ -185,44 +338,38 @@ class Manager:
                                the commit
 
         """
-        f = self.session.send_rpc(
-            commit(
-                confirmed=confirmed,
-                confirm_timeout=confirm_timeout,
-                persist=persist,
-                persist_id=persist_id,
-            )
+        rpc_xml = commit(
+            confirmed=confirmed,
+            confirm_timeout=confirm_timeout,
+            persist=persist,
+            persist_id=persist_id,
         )
-        f.result(timeout=self.timeout)
+        self._send_rpc(rpc_xml)
 
     def lock(self, target):
         """Send a ``<lock>`` request
 
         :param str target: The datastore to be locked
         """
-        f = self.session.send_rpc(lock(target))
-        f.result(timeout=self.timeout)
+        self._send_rpc(lock(target))
 
     def unlock(self, target):
         """Send an ``<unlock>`` request
 
         :param str target: The datastore to be unlocked
         """
-        f = self.session.send_rpc(unlock(target))
-        f.result(timeout=self.timeout)
+        self._send_rpc(unlock(target))
 
     def kill_session(self, session_id):
         """Send a ``<kill-session>`` request
 
         :param int session_id: The session to be killed
         """
-        f = self.session.send_rpc(kill_session(session_id))
-        f.result(timeout=self.timeout)
+        self._send_rpc(kill_session(session_id))
 
     def close_session(self):
         """Send a ``<close-session>`` request"""
-        f = self.session.send_rpc(close_session())
-        f.result(timeout=self.timeout)
+        self._send_rpc(close_session())
 
     def create_subscription(
         self, stream=None, filter=None, start_time=None, stop_time=None
@@ -238,20 +385,17 @@ class Manager:
         :param str stop_time: When replaying notifications, the latest notifications to replay
 
         """
-        f = self.session.send_rpc(
-            create_subscription(
-                stream=stream, filter=filter, start_time=start_time, stop_time=stop_time
-            )
+        rpc_xml = create_subscription(
+            stream=stream, filter=filter, start_time=start_time, stop_time=stop_time
         )
-        f.result(timeout=self.timeout)
+        self._send_rpc(rpc_xml)
 
     def validate(self, source):
         """Send a ``<validate>`` request
 
         :param str source: The datastore to validate
         """
-        f = self.session.send_rpc(validate(source))
-        f.result(timeout=self.timeout)
+        self._send_rpc(validate(source))
 
     @property
     def session_id(self):
@@ -285,8 +429,7 @@ class Manager:
 
         :rtype: :class:`RPCReply`
         """
-        f = self.session.send_rpc(make_rpc(from_ele(rpc)))
-        (msg, _) = f.result(timeout=self.timeout)
+        (msg, _) = self._send_rpc(make_rpc(from_ele(rpc)))
         return RPCReply(msg)
 
     def delete_config(self, target):
@@ -294,8 +437,7 @@ class Manager:
 
         :param str target: The datastore to delete
         """
-        f = self.session.send_rpc(delete_config(target))
-        f.result(timeout=self.timeout)
+        self._send_rpc(delete_config(target))
 
 
 class DataReply:
