@@ -166,11 +166,10 @@ class Manager:
 
             taken = end_time - self._start_time
             taken_formatted = "%d.%03d" % (taken.seconds, taken.microseconds / 1000)
-            if message:
-                message = "Cause: {}\n".format(message)
+            message = "Cause: {}\n".format(message)
 
             Manager.logger().debug(
-                "NC Failure %s (%s sec)\n%s",
+                "NC Failure%s (%s sec)\n%s",
                 conn_id,
                 taken_formatted,
                 message,
@@ -213,8 +212,6 @@ class Manager:
             raise
         except Exception as e:
             message = str(e)
-            if not message:
-                message = type(e)
             self._log_rpc_failure("RPC exception: {}".format(message), funcname)
             raise
 
