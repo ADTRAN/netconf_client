@@ -83,6 +83,7 @@ class Manager:
         self._start_time = self._get_timestamp()
         self._local_ip = None
         self._peer_ip = None
+        self._funcname = None
 
     def __enter__(self):
         return self
@@ -128,8 +129,13 @@ class Manager:
                 result = " {} {} {}".format(self._local_ip, direction, self._peer_ip)
         return result
 
-    def _log_rpc_request(self, rpc_xml, funcname):
+    def _fetch_funcname(self):
+        """Retrieves and stores the name of the API function being called"""
+        self._funcname = inspect.stack()[3][3]
+
+    def _log_rpc_request(self, rpc_xml):
         if self._is_logger_enabled():
+            self._fetch_funcname()
             self._fetch_connection_ip()
             conn_id = self._get_connection_info("=>")
             self._start_time = self._get_timestamp()
@@ -139,10 +145,10 @@ class Manager:
                 "NC Request%s:\n%s",
                 conn_id,
                 pretty,
-                extra={"ncclient.Manager.funcname": funcname},
+                extra={"ncclient.Manager.funcname": self._funcname},
             )
 
-    def _log_rpc_response(self, rpc_xml, funcname):
+    def _log_rpc_response(self, rpc_xml):
         if self._is_logger_enabled():
             end_time = self._get_timestamp()
             conn_id = self._get_connection_info("<=")
@@ -156,10 +162,10 @@ class Manager:
                 conn_id,
                 taken_formatted,
                 pretty,
-                extra={"ncclient.Manager.funcname": funcname},
+                extra={"ncclient.Manager.funcname": self._funcname},
             )
 
-    def _log_rpc_failure(self, message, funcname):
+    def _log_rpc_failure(self, message):
         if self._is_logger_enabled():
             end_time = self._get_timestamp()
             conn_id = self._get_connection_info("<=")
@@ -173,7 +179,7 @@ class Manager:
                 conn_id,
                 taken_formatted,
                 message,
-                extra={"ncclient.Manager.funcname": funcname},
+                extra={"ncclient.Manager.funcname": self._funcname},
             )
 
     def _send_rpc(self, rpc_xml):
@@ -191,28 +197,25 @@ class Manager:
         """
 
         (raw, ele) = (None, None)
-        funcname = inspect.stack()[1][3]
-        self._log_rpc_request(rpc_xml, funcname)
+        self._log_rpc_request(rpc_xml)
 
         try:
             f = self.session.send_rpc(rpc_xml)
             r = f.result(timeout=self.timeout)
             if not r:
-                self._log_rpc_failure("RPC returned without result", funcname)
+                self._log_rpc_failure("RPC returned without result")
             else:
                 (raw, ele) = f.result(timeout=self.timeout)
-                self._log_rpc_response(raw, funcname)
+                self._log_rpc_response(raw)
         except CancelledError:
-            self._log_rpc_failure("RPC cancelled", funcname)
+            self._log_rpc_failure("RPC cancelled")
             raise
         except TimeoutError:
-            self._log_rpc_failure(
-                "RPC timeout (max. {} seconds)".format(self.timeout), funcname
-            )
+            self._log_rpc_failure("RPC timeout (max. {} seconds)".format(self.timeout))
             raise
         except Exception as e:
             message = str(e)
-            self._log_rpc_failure("RPC exception: {}".format(message), funcname)
+            self._log_rpc_failure("RPC exception: {}".format(message))
             raise
 
         return (raw, ele)
