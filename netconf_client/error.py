@@ -55,3 +55,9 @@ class RpcError(NetconfClientException):
             self.info = etree.tostring(err_info[0])
 
         super(RpcError, self).__init__(msg)
+
+
+class NetconfProtocolError(NetconfClientException):
+    """This exception is raised on any NETCONF protocol error"""
+
+    pass

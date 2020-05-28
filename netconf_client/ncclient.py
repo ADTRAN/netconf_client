@@ -110,7 +110,7 @@ class Manager:
         try:
             (self._local_ip, _) = self.session.sock.sock.getsockname()
             (self._peer_ip, _) = self.session.sock.sock.getpeername()
-        except socket_error:
+        except (AttributeError, socket_error):
             pass
 
     def _get_connection_info(self, direction):

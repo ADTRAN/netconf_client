@@ -109,7 +109,7 @@ class Session:
             try:
                 msg = self.parser.send(self.mode)
             except Exception as e:
-                logger.info("Stopping recv thread due to exception %s", e)
+                logger.info("Stopping recv thread due to exception %s", str(e))
                 return
 
             ele = etree.fromstring(msg)
