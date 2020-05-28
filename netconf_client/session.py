@@ -1,5 +1,6 @@
 from threading import Thread
 from concurrent.futures import Future
+from socket import error as socket_error
 
 from six.moves.queue import Queue, Empty
 from lxml import etree
@@ -108,8 +109,10 @@ class Session:
         while True:
             try:
                 msg = self.parser.send(self.mode)
+            except socket_error:
+                return  # maybe, the underlying socket has already been closed (close_session())
             except Exception as e:
-                logger.info("Stopping recv thread due to exception %s", e)
+                logger.info("Stopping recv thread due to exception %s", str(e))
                 return
 
             ele = etree.fromstring(msg)
