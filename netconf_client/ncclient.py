@@ -37,7 +37,7 @@ def _pretty_xml(xml):
         parser = etree.XMLParser(remove_blank_text=True)
         tree = etree.fromstring(xml, parser)
         pretty = etree.tostring(tree, pretty_print=True).decode()
-    except Exception as e:
+    except etree.Error as e:
         pretty = "Error: Cannot format XML message: {}\nPlain message is:\n{}".format(
             str(e), xml.decode()
         )
