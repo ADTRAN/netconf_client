@@ -32,9 +32,17 @@ _logger = logging.getLogger("netconf_client.manager")
 def _pretty_xml(xml):
     """Reformats a given string containing an XML document (for human readable output)"""
 
-    parser = etree.XMLParser(remove_blank_text=True)
-    tree = etree.fromstring(xml, parser)
-    return etree.tostring(tree, pretty_print=True).decode()
+    pretty = ""
+    try:
+        parser = etree.XMLParser(remove_blank_text=True)
+        tree = etree.fromstring(xml, parser)
+        pretty = etree.tostring(tree, pretty_print=True).decode()
+    except Exception as e:
+        pretty = "Error: Cannot format XML message: {}\nPlain message is:\n{}".format(
+            str(e), xml.decode()
+        )
+
+    return pretty
 
 
 class Manager:
