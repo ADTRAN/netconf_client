@@ -12,7 +12,7 @@ from netconf_client.constants import (
 
 def parse_messages(sock, mode):
     buf = b""
-    partial_msg = b""
+    partial_msg = []
     pos = 0
     chunk_length = 0
 
@@ -41,7 +41,7 @@ def parse_messages(sock, mode):
                 logger.debug("Updating parsing mode to %s", new_mode)
                 mode = new_mode
                 pos = 0
-                partial_msg = b""
+                del partial_msg[:]
                 chunk_length = 0
 
 
@@ -104,8 +104,8 @@ def parse_messages_11_from_buf(buf, partial_msg, chunk_length):
                             "Unexpected 'end-of-chunks' pattern found"
                         )
 
-                    msgs.append(partial_msg)  # preserve a new message
-                    partial_msg = b""
+                    msgs.append(b"".join((partial_msg)))  # preserve a new message
+                    del partial_msg[:]
                     buf = buf[
                         DELIMITER_11_LEN:
                     ]  # remove the delimiter from buffer, keep the rest
@@ -126,7 +126,7 @@ def parse_messages_11_from_buf(buf, partial_msg, chunk_length):
 
             # copy at most `chunk_length` bytes from buffer into `partial_msg`
             available = min(buf_length, chunk_length)
-            partial_msg += buf[:available]
+            partial_msg.append(buf[:available])
             buf = buf[available:]  # remove copied bytes, keep the rest
             chunk_length -= available
 

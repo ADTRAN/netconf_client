@@ -287,6 +287,56 @@ def test_get(fake_id, log_id, log_local_ip, log_peer_ip, log_content):
         assert log_recorder.check_content("get", log_content)
 
 
+def test_xml_error(fake_id):
+    with LogSentry(True), MockSession([]) as session, Manager(
+        session, timeout=1
+    ) as mgr:
+        session.replies.append((RPC_REPLY_DATA, etree.fromstring(RPC_REPLY_DATA)))
+
+        # namespace prefix for "adtn-lag:lag" missing
+        bad_filter = """
+        <filter>
+          <if:interfaces xmlns:if="urn:ietf:params:xml:ns:yang:ietf-interfaces">
+            <if:interface>
+              <if:name>ethernet 0/1:1</if:name>
+                <adtn-lag:lag/>
+            </if:interface>
+          </if:interfaces>
+        </filter>"""
+        r = mgr.get(filter=bad_filter)
+
+        # NC request was sent nevertheless (and a response was received)
+        assert uglify(session.sent[0].decode("utf-8")) == uglify(
+            """
+            <rpc message-id="fake-id" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+              <get xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+                {}
+              </get>
+            </rpc>
+            """.format(
+                bad_filter
+            )
+        )
+        assert r.data_ele.text == "bar"
+
+        log_content = [
+            [
+                "NC Request:\n",
+                "\nError: Cannot format XML message: ",
+                "Namespace prefix adtn-lag on lag is not defined",
+                "\nPlain message is:",
+                bad_filter,
+            ],
+            [
+                r"NC Response \(\d\.\d+ sec\):\n",
+                "<rpc-reply ",
+                "<data>bar</data>",
+                "</rpc-reply>",
+            ],
+        ]
+        assert log_recorder.check_content("get", log_content)
+
+
 def test_get_config(session, fake_id):
     session.replies.append((RPC_REPLY_DATA, etree.fromstring(RPC_REPLY_DATA)))
     with Manager(session, timeout=1) as mgr:
@@ -624,7 +674,7 @@ def test_exceptions(fake_id, log_enabled, session_exception, log_content):
 
         caught = None
         try:
-            r = mgr.get(filter="<filter>foo</filter>", with_defaults="explicit")
+            mgr.get(filter="<filter>foo</filter>", with_defaults="explicit")
         except Exception as e:
             caught = e
 
