@@ -104,6 +104,12 @@ class Manager:
         """Returns the internally used logger instance (same for all sessions)"""
         return _logger
 
+    def enable_logging(self, level=logging.DEBUG):
+        _logger.setLevel(level)
+
+    def disable_logging(self, level=logging.NOTSET):
+        _logger.setLevel(level)
+
     def _get_timestamp(self):
         return datetime.now()
 
