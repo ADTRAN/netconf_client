@@ -1,11 +1,11 @@
 from six.moves.queue import Queue
 import pytest
 
+from common import RPC_ERROR_WITHOUT_MSG
+
 from netconf_client.session import Session, frame_message_11
 from netconf_client.constants import DEFAULT_HELLO, DELIMITER_10
 from netconf_client.error import RpcError, SessionClosedException
-
-from common import RPC_ERROR_WITHOUT_MSG
 
 
 SERVER_HELLO = b"""

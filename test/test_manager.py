@@ -666,9 +666,9 @@ def test_take_notification_empty(session):
     ids=["no logging", "CancelledError", "TimeoutError", "any"],
 )
 def test_exceptions(fake_id, log_enabled, session_exception, log_content):
-    with LogSentry(log_enabled), MockSession([],) as session, Manager(
-        session, timeout=10, log_id="bad device"
-    ) as mgr:
+    with LogSentry(log_enabled), MockSession(
+        [],
+    ) as session, Manager(session, timeout=10, log_id="bad device") as mgr:
         session.replies.append((RPC_REPLY_DATA, etree.fromstring(RPC_REPLY_DATA)))
         session.set_exception(session_exception())
 
@@ -707,7 +707,10 @@ def test_convert_filter_unimplemented():
 
 @pytest.mark.parametrize(
     "inp,result",
-    [("as-it-is", "as-it-is"), (etree.Element("data"), "<data/>"),],
+    [
+        ("as-it-is", "as-it-is"),
+        (etree.Element("data"), "<data/>"),
+    ],
     ids=["pass-through", "Element"],
 )
 def test_from_ele(inp, result):
@@ -716,7 +719,10 @@ def test_from_ele(inp, result):
 
 @pytest.mark.parametrize(
     "inp,result",
-    [("<root>data</root>", "root"), (etree.Element("data"), "data"),],
+    [
+        ("<root>data</root>", "root"),
+        (etree.Element("data"), "data"),
+    ],
     ids=["convert", "Element"],
 )
 def test_to_ele(inp, result):
@@ -781,9 +787,10 @@ class MockSession:
         v = self.replies[0]
         self.replies = self.replies[1:]
         f = Future()
-        f.set_result(v)
         if self.exception:
             f.set_exception(self.exception)
+        else:
+            f.set_result(v)
         return f
 
     def session_id(self):
