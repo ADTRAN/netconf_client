@@ -196,15 +196,15 @@ class Manager:
     def _send_rpc(self, rpc_xml):
         """Send given NC request message and expect a NC response
 
-           Both, the NC request and response messages are logged with timestamp.
-           In case of failure or exceptions, the error cause is logged, if known.
-           Exceptions thrown by functions called by _send_rpc() are re-raised
-           after they have been logged.
+        Both, the NC request and response messages are logged with timestamp.
+        In case of failure or exceptions, the error cause is logged, if known.
+        Exceptions thrown by functions called by _send_rpc() are re-raised
+        after they have been logged.
 
-           :param str rpc_xml: XML RPC message to sent to NC server
+        :param str rpc_xml: XML RPC message to sent to NC server
 
-           :rtype :tupel: (`str` raw XML response, `ElementTree`: Element Tree or None)
-           :exception: whatever exceptions raised by /netconf-client/netconf_client/ncclient.py
+        :rtype :tupel: (`str` raw XML response, `ElementTree`: Element Tree or None)
+        :exception: whatever exceptions raised by /netconf-client/netconf_client/ncclient.py
         """
 
         (raw, ele) = (None, None)
@@ -302,7 +302,9 @@ class Manager:
 
         """
         rpc_xml = get_config(
-            source=source, filter=convert_filter(filter), with_defaults=with_defaults,
+            source=source,
+            filter=convert_filter(filter),
+            with_defaults=with_defaults,
         )
         (raw, ele) = self._send_rpc(rpc_xml)
         return DataReply(raw, ele)

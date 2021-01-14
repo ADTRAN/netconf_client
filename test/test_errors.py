@@ -1,8 +1,8 @@
 from lxml import etree
 
-from netconf_client.error import RpcError
-
 from common import RPC_ERROR_WITH_MSG, RPC_ERROR_WITHOUT_MSG
+
+from netconf_client.error import RpcError
 
 
 def test_rpc_error_msg():

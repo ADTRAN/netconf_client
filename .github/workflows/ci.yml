@@ -1,0 +1,14 @@
+on: [push, pull_request]
+name: CI Checks
+jobs:
+  ci:
+    name: CI Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - run: git submodule update --init --recursive
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y tox
+      - uses: actions/setup-python@v1
+      - run: tox
+      - run: bash <(curl -s https://codecov.io/bash) -f .tox/py3-testcoverage.xml -f .tox/py27-testcoverage.xml
