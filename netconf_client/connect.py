@@ -13,12 +13,14 @@ def __connect(host, port, timeout):
     https://docs.python.org/3/library/socket.html
     """
     s = None
+    err = ''
     for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM):
         af, socktype, proto, canonname, sa = res
         try:
             s = socket.socket(af, socktype, proto)
         except OSError as msg:
             s = None
+            err = msg
             continue
         try:
             s.settimeout(timeout)
@@ -26,8 +28,11 @@ def __connect(host, port, timeout):
         except OSError as msg:
             s.close()
             s = None
+            err = msg
             continue
         break
+    if s is None:
+        raise Exception('Could not open socket: ' + str(err))
     return s
 
 
@@ -145,7 +150,7 @@ class CallhomeManager:
 
     """
 
-    def __init__(self, bind_to="", port=4334, ipv6=None, backlog=1):
+    def __init__(self, bind_to="", port=4334, backlog=1, ipv6=False):
         self.bind_to = bind_to
         self.port = port
         self.ipv6 = ipv6
