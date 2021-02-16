@@ -312,7 +312,8 @@ class Manager:
     def copy_config(self, target, source, with_defaults=None):
         """Send a ``<copy-config>`` request
 
-        :param str source: The source datastore
+        :param str source: The source datastore or the <config> element
+                           containing the complete configuration to copy.
 
         :param str target: The destination datastore
 
