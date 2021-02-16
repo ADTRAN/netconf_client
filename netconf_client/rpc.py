@@ -65,7 +65,7 @@ def copy_config(target, source, filter=None, with_defaults=None, msg_id=None):
     pieces = []
     pieces.append("<copy-config>")
     pieces.append("<target><{}/></target>".format(target))
-    if source.startswith('<config'):
+    if source.startswith("<config"):
         pieces.append("<source>{}</source>".format(source))
     else:
         pieces.append("<source><{}/></source>".format(source))
