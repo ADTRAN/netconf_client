@@ -65,7 +65,10 @@ def copy_config(target, source, filter=None, with_defaults=None, msg_id=None):
     pieces = []
     pieces.append("<copy-config>")
     pieces.append("<target><{}/></target>".format(target))
-    pieces.append("<source><{}/></source>".format(source))
+    if source.startswith('<config'):
+        pieces.append("<source>{}</source>".format(source))
+    else:
+        pieces.append("<source><{}/></source>".format(source))
     if with_defaults:
         pieces.append(make_with_defaults(with_defaults))
     pieces.append("</copy-config>")
