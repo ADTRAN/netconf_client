@@ -6,6 +6,8 @@ from concurrent.futures import CancelledError, TimeoutError
 from six.moves.queue import Empty
 from lxml import etree
 
+import six
+
 from netconf_client.error import RpcError
 from netconf_client.rpc import (
     edit_config,
@@ -24,13 +26,14 @@ from netconf_client.rpc import (
     delete_config,
 )
 
-import six
 if six.PY3:
     from time import monotonic
-    _current_timestamp = monotonic
+
+    _get_current_timestamp = monotonic
 else:
     from time import time
-    _current_timestamp = time
+
+    _get_current_timestamp = time
 
 
 # Defines the scope for netconf traces
@@ -218,7 +221,7 @@ class Manager:
         (raw, ele) = (None, None)
         self._log_rpc_request(rpc_xml)
 
-        current_timestamp = _current_timestamp()
+        current_timestamp = _get_current_timestamp()
         end_timestamp = current_timestamp + self.timeout
         try:
             f = self.session.send_rpc(rpc_xml)
@@ -233,7 +236,7 @@ class Manager:
                         self._log_rpc_response(raw)
                     return (raw, ele)
                 except TimeoutError:
-                    current_timestamp = _current_timestamp()
+                    current_timestamp = _get_current_timestamp()
                     if current_timestamp >= end_timestamp:
                         raise
         except CancelledError:
@@ -246,7 +249,6 @@ class Manager:
             message = str(e)
             self._log_rpc_failure("RPC exception: {}".format(message))
             raise
-
 
     def edit_config(
         self,
