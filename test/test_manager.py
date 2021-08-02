@@ -130,7 +130,7 @@ def test_manager_lifecycle_with_id(session):
                     "</edit-config>",
                 ],
                 [
-                    r"NC Failure \(\d\.\d+ sec\)\n",
+                    r"NC Failure \(\d+\.\d+ sec\)\n",
                     "Cause: RPC returned without result",
                 ],
             ],
@@ -147,7 +147,7 @@ def test_manager_lifecycle_with_id(session):
                     "</edit-config>",
                 ],
                 [
-                    r"NC Failure <= Raspi-2 \(\d\.\d+ sec\)\n",
+                    r"NC Failure <= Raspi-2 \(\d+\.\d+ sec\)\n",
                     "Cause: RPC returned without result",
                 ],
             ],
@@ -195,7 +195,7 @@ def test_edit_config(session, fake_id, log_enabled, log_id, log_funcname, log_co
             [
                 ["NC Request:\n", "<get xmlns:nc", "<filter>foo</filter>", "</get>"],
                 [
-                    r"NC Response \(\d\.\d+ sec\):\n",
+                    r"NC Response \(\d+\.\d+ sec\):\n",
                     "<rpc-reply ",
                     "<data>bar</data>",
                     "</rpc-reply>",
@@ -215,7 +215,7 @@ def test_edit_config(session, fake_id, log_enabled, log_id, log_funcname, log_co
                     "</get>",
                 ],
                 [
-                    r"NC Response <= Raspi-4 \(\d\.\d+ sec\):\n",
+                    r"NC Response <= Raspi-4 \(\d+\.\d+ sec\):\n",
                     "<rpc-reply ",
                     "<data>bar</data>",
                     "</rpc-reply>",
@@ -235,7 +235,7 @@ def test_edit_config(session, fake_id, log_enabled, log_id, log_funcname, log_co
                     "</get>",
                 ],
                 [
-                    r"NC Response 1\.2\.3\.4 <= 5\.6\.7\.8 \(\d\.\d+ sec\):\n",
+                    r"NC Response 1\.2\.3\.4 <= 5\.6\.7\.8 \(\d+\.\d+ sec\):\n",
                     "<rpc-reply ",
                     "<data>bar</data>",
                     "</rpc-reply>",
@@ -255,7 +255,7 @@ def test_edit_config(session, fake_id, log_enabled, log_id, log_funcname, log_co
                     "</get>",
                 ],
                 [
-                    r"NC Response \(1\.2\.3\.4\) <= Raspi-4 \(5\.6\.7\.8\) \(\d\.\d+ sec\):\n",
+                    r"NC Response \(1\.2\.3\.4\) <= Raspi-4 \(5\.6\.7\.8\) \(\d+\.\d+ sec\):\n",
                     "<rpc-reply ",
                     "<data>bar</data>",
                     "</rpc-reply>",
@@ -328,7 +328,7 @@ def test_xml_error(fake_id):
                 bad_filter,
             ],
             [
-                r"NC Response \(\d\.\d+ sec\):\n",
+                r"NC Response \(\d+\.\d+ sec\):\n",
                 "<rpc-reply ",
                 "<data>bar</data>",
                 "</rpc-reply>",
@@ -575,7 +575,7 @@ def test_dispatch(session, fake_id):
             [
                 ["NC Request:\n", "<rpc xmlns", "<data>pie test</data>", "</rpc>"],
                 [
-                    r"NC Response \(\d\.\d+ sec\):\n",
+                    r"NC Response \(\d+\.\d+ sec\):\n",
                     "<rpc-reply",
                     "<data>bar</data>",
                     "</rpc-reply>",
@@ -625,7 +625,7 @@ def test_take_notification_empty(session):
                     "</get>",
                 ],
                 [
-                    r"NC Failure <= bad device \(\d\.\d+ sec\)\n",
+                    r"NC Failure <= bad device \(\d+\.\d+ sec\)\n",
                     "Cause: RPC cancelled",
                 ],
             ],
@@ -641,7 +641,7 @@ def test_take_notification_empty(session):
                     "</get>",
                 ],
                 [
-                    r"NC Failure <= bad device \(\d\.\d+ sec\)\n",
+                    r"NC Failure <= bad device \(\d+\.\d+ sec\)\n",
                     r"Cause: RPC timeout \(max\. 10 seconds\)",
                 ],
             ],
@@ -657,7 +657,7 @@ def test_take_notification_empty(session):
                     "</get>",
                 ],
                 [
-                    r"NC Failure <= bad device \(\d\.\d+ sec\)\n",
+                    r"NC Failure <= bad device \(\d+\.\d+ sec\)\n",
                     "Cause: RPC exception: " + str(ValueError()),
                 ],
             ],
