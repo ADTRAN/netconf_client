@@ -17,7 +17,6 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.6.2"
-six = "^1.16.0"
 lxml = "^4.6.3"
 paramiko = "^2.7.2"
 

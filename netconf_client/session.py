@@ -1,7 +1,7 @@
 from threading import Thread
 from concurrent.futures import Future
+from queue import Queue, Empty
 
-from six.moves.queue import Queue, Empty
 from lxml import etree
 
 from netconf_client.parser import parse_messages

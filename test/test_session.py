@@ -1,4 +1,5 @@
-from six.moves.queue import Queue
+from queue import Queue
+
 import pytest
 
 from common import RPC_ERROR_WITHOUT_MSG

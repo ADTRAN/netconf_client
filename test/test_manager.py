@@ -4,8 +4,9 @@ from concurrent.futures import Future, CancelledError, TimeoutError
 import logging
 import re
 from unittest.mock import patch
+from queue import Empty
+
 from lxml import etree
-from six.moves.queue import Empty
 import pytest
 
 from netconf_client.ncclient import Manager, convert_filter, from_ele, to_ele
