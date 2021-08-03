@@ -92,7 +92,7 @@ def connect_tls(
         sock.connect((host, port))
         sock.settimeout(None)
     cert_reqs = ssl.CERT_REQUIRED if ca_certs else ssl.CERT_NONE
-    ssl_sock = ssl.wrap_socket(
+    ssl_sock = ssl.wrap_socket(  # pylint: disable=W1505
         sock, keyfile=keyfile, certfile=certfile, cert_reqs=cert_reqs, ca_certs=ca_certs
     )
     return Session(ssl_sock)
@@ -178,6 +178,7 @@ def _try_load_pkey(path):
             return cls.from_private_key_file(path)
         except Exception:
             pass
+    return None
 
 
 class SshSessionSock:
