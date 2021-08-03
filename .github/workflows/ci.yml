@@ -9,7 +9,6 @@ jobs:
       - run: git submodule update --init --recursive
       - uses: actions/setup-python@v2
       - uses: abatilo/actions-poetry@v2.0.0
-      - run: tox
       - run: poetry install
       - run: poetry run pytest
       - run: poetry run black . --check
