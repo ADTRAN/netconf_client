@@ -105,4 +105,4 @@ package_name.egg-info/*
 *.swo
 
 docs_out/
-
+.coverage

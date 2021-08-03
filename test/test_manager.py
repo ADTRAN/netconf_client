@@ -3,7 +3,7 @@ from socket import error as socket_error
 from concurrent.futures import Future, CancelledError, TimeoutError
 import logging
 import re
-from mock import patch
+from unittest.mock import patch
 from lxml import etree
 from six.moves.queue import Empty
 import pytest

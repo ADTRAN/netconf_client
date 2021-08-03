@@ -7,12 +7,13 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - run: git submodule update --init --recursive
-      - run: sudo apt-get update
-      - run: sudo apt-get install -y tox
-      - uses: actions/setup-python@v1
+      - uses: actions/setup-python@v2
+      - uses: abatilo/actions-poetry@v2.0.0
       - run: tox
-      - run: python3 -m pip install build --user
-      - run: python3 -m build --sdist --wheel --outdir dist/ .
+      - run: poetry install
+      - run: poetry run pytest
+      - run: poetry run black . --check
+      - run: poetry build
       - name: Publish distribution to PyPI
         if: startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@master
