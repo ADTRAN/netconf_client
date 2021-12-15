@@ -108,11 +108,11 @@ class Session:
         while True:
             try:
                 msg = self.parser.send(self.mode)
+                ele = etree.fromstring(msg)
             except Exception as e:
                 logger.info("Stopping recv thread due to exception %s", str(e))
                 return
 
-            ele = etree.fromstring(msg)
             if ele.xpath("/nc:rpc-reply", namespaces=NAMESPACES):
                 try:
                     f = self.rpc_reply_futures.get(block=False)
