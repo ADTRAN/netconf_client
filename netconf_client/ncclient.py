@@ -222,7 +222,7 @@ class Manager:
                     if not r:
                         self._log_rpc_failure("RPC returned without result")
                     else:
-                        (raw, ele) = f.result(timeout=timeout)
+                        (raw, ele) = r
                         self._log_rpc_response(raw)
                     return (raw, ele)
                 except TimeoutError:
