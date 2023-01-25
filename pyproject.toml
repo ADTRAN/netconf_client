@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "netconf_client"
-version = "2.0.1"
+version = "2.0.2"
 description = "A Python NETCONF client"
 authors = ["ADTRAN, Inc."]
 license = "Apache-2.0"
@@ -18,7 +18,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.6.2"
 lxml = "^4.6.3"
-paramiko = "^2.7.2"
+paramiko = "^2.7.2 || ^3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
