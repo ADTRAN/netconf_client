@@ -4,6 +4,7 @@ import logging
 import inspect
 from concurrent.futures import CancelledError, TimeoutError
 from queue import Empty
+from typing import Optional
 import time
 
 from lxml import etree
@@ -16,6 +17,7 @@ from netconf_client.rpc import (
     copy_config,
     discard_changes,
     commit,
+    cancel_commit,
     lock,
     unlock,
     kill_session,
@@ -371,6 +373,15 @@ class Manager:
             persist_id=persist_id,
         )
         self._send_rpc(rpc_xml)
+
+    def cancel_commit(self, persist_id: Optional[str] = None):
+        """Send a ``<cancel-commit>`` request
+
+        :param str persist_id: A persistent confirmed commit id given in the ``<commit>``
+                               request. Can be None (default), if ``<cancel-commit>`` is issued
+                               on the same session that issued the confirmed commit.
+        """
+        self._send_rpc(cancel_commit(persist_id))
 
     def lock(self, target):
         """Send a ``<lock>`` request
