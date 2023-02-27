@@ -416,6 +416,49 @@ def test_commit(session, fake_id):
         )
 
 
+def test_cancel_commit_default_0(session, fake_id):
+    session.replies.append(None)
+    with Manager(session, timeout=1) as mgr:
+        mgr.cancel_commit()
+        assert session.sent[0] == uglify(
+            """
+            <rpc message-id="fake-id" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+              <cancel-commit>
+              </cancel-commit>
+            </rpc>
+            """
+        )
+
+
+def test_cancel_commit_default_1(session, fake_id):
+    session.replies.append(None)
+    with Manager(session, timeout=1) as mgr:
+        mgr.cancel_commit(persist_id="")
+        assert session.sent[0] == uglify(
+            """
+            <rpc message-id="fake-id" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+              <cancel-commit>
+              </cancel-commit>
+            </rpc>
+            """
+        )
+
+
+def test_cancel_commit_persist_id(session, fake_id):
+    session.replies.append(None)
+    with Manager(session, timeout=1) as mgr:
+        mgr.cancel_commit(persist_id="IQ,d4668")
+        assert session.sent[0] == uglify(
+            """
+            <rpc message-id="fake-id" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+              <cancel-commit>
+                <persist-id>IQ,d4668</persist-id>
+              </cancel-commit>
+            </rpc>
+            """
+        )
+
+
 def test_lock(session, fake_id):
     session.replies.append(None)
     with Manager(session, timeout=1) as mgr:

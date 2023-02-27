@@ -1,4 +1,6 @@
 import uuid
+from typing import Optional
+
 from lxml import etree
 
 
@@ -93,6 +95,17 @@ def commit(
     if persist_id:
         pieces.append("<persist-id>{}</persist-id>".format(persist_id))
     pieces.append("</commit>")
+    return make_rpc("".join(pieces), msg_id=msg_id)
+
+
+def cancel_commit(persist_id: Optional[str] = None, msg_id=None):
+    pieces = []
+    pieces.append("<cancel-commit>")
+
+    if persist_id:
+        pieces.append(f"<persist-id>{persist_id}</persist-id>")
+
+    pieces.append("</cancel-commit>")
     return make_rpc("".join(pieces), msg_id=msg_id)
 
 
