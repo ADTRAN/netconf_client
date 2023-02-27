@@ -7,6 +7,35 @@ from netconf_client.session import Session
 from netconf_client.log import logger
 
 
+def __connect(host, port, timeout):
+    """
+    Try to connect to the all addresses.
+    https://docs.python.org/3/library/socket.html
+    """
+    s = None
+    err = ''
+    for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM):
+        af, socktype, proto, canonname, sa = res
+        try:
+            s = socket.socket(af, socktype, proto)
+        except OSError as msg:
+            s = None
+            err = msg
+            continue
+        try:
+            s.settimeout(timeout)
+            s.connect(sa)
+        except OSError as msg:
+            s.close()
+            s = None
+            err = msg
+            continue
+        break
+    if s is None:
+        raise Exception('Could not open socket: ' + str(err))
+    return s
+
+
 def connect_ssh(
     host=None,
     port=830,
@@ -15,6 +44,7 @@ def connect_ssh(
     key_filename=None,
     sock=None,
     timeout=120,
+    **ignore
 ):
     """Connect to a NETCONF server over SSH.
 
@@ -41,9 +71,7 @@ def connect_ssh(
 
     """
     if not sock:
-        sock = socket.socket()
-        sock.settimeout(timeout)
-        sock.connect((host, port))
+        sock = __connect(host, port, timeout)
         sock.settimeout(None)
     transport = paramiko.transport.Transport(sock)
     pkey = _try_load_pkey(key_filename) if key_filename else None
@@ -62,6 +90,7 @@ def connect_tls(
     ca_certs=None,
     sock=None,
     timeout=120,
+    **ignore
 ):
     """Connect to a NETCONF server over TLS.
 
@@ -87,9 +116,7 @@ def connect_tls(
 
     """
     if not sock:
-        sock = socket.socket()
-        sock.settimeout(timeout)
-        sock.connect((host, port))
+        sock = __connect(host, port, timeout)
         sock.settimeout(None)
     cert_reqs = ssl.CERT_REQUIRED if ca_certs else ssl.CERT_NONE
     ssl_sock = ssl.wrap_socket(  # pylint: disable=W1505
@@ -123,14 +150,18 @@ class CallhomeManager:
 
     """
 
-    def __init__(self, bind_to="", port=4334, backlog=1):
+    def __init__(self, bind_to="", port=4334, backlog=1, ipv6=False):
         self.bind_to = bind_to
         self.port = port
+        self.ipv6 = ipv6
         self.server_socket = None
         self.backlog = backlog
 
     def __enter__(self):
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if self.ipv6:
+            self.server_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        else:
+            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.bind_to, self.port))
         self.server_socket.listen(self.backlog)
         return self
