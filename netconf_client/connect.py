@@ -4,6 +4,7 @@ from base64 import b64decode
 
 import paramiko
 
+from netconf_client.error import InvalidSSHHostkey
 from netconf_client.session import Session
 from netconf_client.log import logger
 
@@ -183,7 +184,7 @@ def _try_load_hostkey_b64(data):
             return cls(data=b64decode(data))
         except paramiko.SSHException:
             pass
-    return None
+    raise InvalidSSHHostkey()
 
 
 def _try_load_pkey(path):
