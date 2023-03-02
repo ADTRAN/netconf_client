@@ -1,8 +1,10 @@
 import socket
 import ssl
+from base64 import b64decode
 
 import paramiko
 
+from netconf_client.error import InvalidSSHHostkey
 from netconf_client.session import Session
 from netconf_client.log import logger
 
@@ -15,6 +17,7 @@ def connect_ssh(
     key_filename=None,
     sock=None,
     timeout=120,
+    hostkey_b64=None,
 ):
     """Connect to a NETCONF server over SSH.
 
@@ -37,6 +40,8 @@ def connect_ssh(
 
     :param int timeout: Seconds to wait when connecting the socket
 
+    :param str hostkey_b64: base64 encoded hostkey.
+
     :rtype: :class:`netconf_client.session.Session`
 
     """
@@ -47,7 +52,8 @@ def connect_ssh(
         sock.settimeout(None)
     transport = paramiko.transport.Transport(sock)
     pkey = _try_load_pkey(key_filename) if key_filename else None
-    transport.connect(username=username, password=password, pkey=pkey)
+    hostkey = _try_load_hostkey_b64(hostkey_b64) if hostkey_b64 else None
+    transport.connect(hostkey=hostkey, username=username, password=password, pkey=pkey)
     channel = transport.open_session()
     channel.invoke_subsystem("netconf")
     bundle = SshSessionSock(sock, transport, channel)
@@ -170,6 +176,15 @@ class CallhomeManager:
     def __exit__(self, _, __, ___):
         self.server_socket.shutdown(socket.SHUT_RDWR)
         self.server_socket.close()
+
+
+def _try_load_hostkey_b64(data):
+    for cls in (paramiko.RSAKey, paramiko.DSSKey, paramiko.ECDSAKey):
+        try:
+            return cls(data=b64decode(data))
+        except paramiko.SSHException:
+            pass
+    raise InvalidSSHHostkey()
 
 
 def _try_load_pkey(path):
