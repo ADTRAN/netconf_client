@@ -18,6 +18,8 @@ def connect_ssh(
     sock=None,
     timeout=120,
     hostkey_b64=None,
+    initial_timeout=None,
+    general_timeout=None,
 ):
     """Connect to a NETCONF server over SSH.
 
@@ -38,7 +40,19 @@ def connect_ssh(
     :param sock: An already-open TCP socket; SSH will be setup on top
                  of it
 
-    :param int timeout: Seconds to wait when connecting the socket
+    :param int initial_timeout: Seconds to wait when first connecting the socket.
+
+    :param int general_timeout: Seconds to wait for a response from the server after connecting.
+
+    :param int timeout: (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will
+                        be ignored if initial_timeout is not None, and will be removed in the next major release.
+
+    :param str hostkey_b64: (Deprecated) Base64-encoded SSH host key.  This will
+    be ignored if hostkey_b64 is not None.
+
+    :param int general_timeout: Seconds to wait for a response from the server.
+
+    :return: :class:`Session` object
 
     :param str hostkey_b64: base64 encoded hostkey.
 
@@ -47,9 +61,9 @@ def connect_ssh(
     """
     if not sock:
         sock = socket.socket()
-        sock.settimeout(timeout)
+        sock.settimeout(initial_timeout or timeout)
         sock.connect((host, port))
-        sock.settimeout(None)
+        sock.settimeout(general_timeout)
     transport = paramiko.transport.Transport(sock)
     pkey = _try_load_pkey(key_filename) if key_filename else None
     hostkey = _try_load_hostkey_b64(hostkey_b64) if hostkey_b64 else None
