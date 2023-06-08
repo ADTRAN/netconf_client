@@ -50,8 +50,6 @@ def connect_ssh(
     :param str hostkey_b64: (Deprecated) Base64-encoded SSH host key.  This will
     be ignored if hostkey_b64 is not None.
 
-    :param int general_timeout: Seconds to wait for a response from the server.
-
     :return: :class:`Session` object
 
     :param str hostkey_b64: base64 encoded hostkey.
