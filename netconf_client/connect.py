@@ -66,7 +66,7 @@ def connect_ssh(
     pkey = _try_load_pkey(key_filename) if key_filename else None
     hostkey = _try_load_hostkey_b64(hostkey_b64) if hostkey_b64 else None
     transport.connect(hostkey=hostkey, username=username, password=password, pkey=pkey)
-    channel = transport.open_session()
+    channel = transport.open_session(timeout=general_timeout)
     channel.invoke_subsystem("netconf")
     bundle = SshSessionSock(sock, transport, channel)
     return Session(bundle)
@@ -99,16 +99,21 @@ def connect_tls(
     :param sock: An already-open TCP socket; TLS will be setup on top
                  of it
 
-    :param int timeout: Seconds to wait when connecting the socket
+    :param int initial_timeout: Seconds to wait when first connecting the socket.
+
+    :param int general_timeout: Seconds to wait for a response from the server after connecting.
+
+    :param int timeout: (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will
+                        be ignored if initial_timeout is not None, and will be removed in the next major release.
 
     :rtype: :class:`netconf_client.session.Session`
 
     """
     if not sock:
         sock = socket.socket()
-        sock.settimeout(timeout)
+        sock.settimeout(initial_timeout or timeout)
         sock.connect((host, port))
-        sock.settimeout(None)
+        sock.settimeout(general_timeout)
     cert_reqs = ssl.CERT_REQUIRED if ca_certs else ssl.CERT_NONE
     ssl_sock = ssl.wrap_socket(  # pylint: disable=W1505
         sock, keyfile=keyfile, certfile=certfile, cert_reqs=cert_reqs, ca_certs=ca_certs
