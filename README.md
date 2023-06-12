@@ -1,6 +1,5 @@
 ![Build Status](https://github.com/ADTRAN/netconf_client/workflows/CI%20Checks/badge.svg)
 [![PyPI version](https://badge.fury.io/py/netconf-client.svg)](https://badge.fury.io/py/netconf-client)
-[![Documentation Status](https://readthedocs.org/projects/netconf-client/badge/?version=latest)](https://netconf-client.readthedocs.io/en/latest/?badge=latest)
 
 # netconf_client
 
@@ -40,4 +39,4 @@ And a few disadvantages:
    for testing edge-case behavior of a server)
 
 
-[User Guide]: https://netconf-client.readthedocs.io/en/latest/
+[User Guide]: https://adtran.github.io/netconf_client/
