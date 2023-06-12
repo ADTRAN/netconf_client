@@ -47,12 +47,9 @@ def connect_ssh(
     :param int timeout: (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will
                         be ignored if initial_timeout is not None, and will be removed in the next major release.
 
-    :param str hostkey_b64: (Deprecated) Base64-encoded SSH host key.  This will
-    be ignored if hostkey_b64 is not None.
+    :param str hostkey_b64: base64 encoded hostkey.
 
     :return: :class:`Session` object
-
-    :param str hostkey_b64: base64 encoded hostkey.
 
     :rtype: :class:`netconf_client.session.Session`
 
@@ -80,6 +77,8 @@ def connect_tls(
     ca_certs=None,
     sock=None,
     timeout=120,
+    initial_timeout=None,
+    general_timeout=None,
 ):
     """Connect to a NETCONF server over TLS.
 

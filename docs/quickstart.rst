@@ -6,14 +6,16 @@ In order to connect to a NETCONF server we can use one of the
 our example we will connect to a NETCONF server running over SSH, so
 we will use the :func:`connect_ssh <netconf_client.connect.connect_ssh>` function.::
 
-  from netconf_client.connect import connect_ssh
+    from netconf_client.connect import connect_ssh
 
-  with connect_ssh(host='192.0.2.1',
-                   port=830,
-                   username='admin',
-                   password='password') as sesssion:
-      # TODO: Do things with the session object
-      pass
+    with connect_ssh(
+        host="192.0.2.1",
+        port=830,
+        username="admin",
+        password="password",
+    ) as sesssion:
+        # TODO: Do things with the session object
+        pass
 
 The object returned from any of the ``connect`` functions is a
 :class:`Session <netconf_client.session.Session>` object. It acts as a
@@ -39,21 +41,27 @@ functions of this class.
 In this example we will perform an ``<edit-config>`` for a single
 node, and then run a ``<get-config>`` to see the change.::
 
-  from netconf_client.connect import connect_ssh
-  from netconf_client.ncclient import Manager
+    from netconf_client.connect import connect_ssh
+    from netconf_client.ncclient import Manager
 
-  with connect_ssh(host='192.0.2.1',
-                   port=830,
-                   username='admin',
-                   password='password') as session:
-      mgr = Manager(session, timeout=120)
-      mgr.edit_config(target='running', '''
-          <config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
-            <service-alpha xmlns="http://example.com">
-              <simple-string>Foo</simple-string>
-            </service-alpha>
-          </config>''')
-      print(mgr.get_config(source='running').data_xml)
+    with connect_ssh(
+        host="192.0.2.1",
+        port=830,
+        username="admin",
+        password="password",
+    ) as session:
+        mgr = Manager(session, timeout=120)
+        mgr.edit_config(
+            target="running",
+            config="""
+              <config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+                <service-alpha xmlns="http://example.com">
+                  <simple-string>Foo</simple-string>
+                </service-alpha>
+              </config>
+            """,
+        )
+        print(mgr.get_config(source="running").data_xml)
 
 An instance of the :class:`Manager <netconf_client.ncclient.Manager>`
 class should be a drop-in replacement for a manager object from
