@@ -1,0 +1,669 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>netconf_client API &#8212; netconf_client  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Migrating" href="migration.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="netconf-client-api">
+<h1>netconf_client API<a class="headerlink" href="#netconf-client-api" title="Permalink to this heading">¶</a></h1>
+<section id="module-netconf_client.connect">
+<span id="netconf-client-connect"></span><h2>netconf_client.connect<a class="headerlink" href="#module-netconf_client.connect" title="Permalink to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="netconf_client.connect.CallhomeManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.connect.</span></span><span class="sig-name descname"><span class="pre">CallhomeManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bind_to</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4334</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backlog</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/connect.html#CallhomeManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.connect.CallhomeManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Listener object for accepting callhome connections (<span class="target" id="index-0"></span><a class="rfc reference external" href="https://datatracker.ietf.org/doc/html/rfc8071.html"><strong>RFC 8071</strong></a>)</p>
+<p>Options on the listener socket (e.g. timeout) can be set on the
+<code class="docutils literal notranslate"><span class="pre">server_socket</span></code> member.</p>
+<p>This object is a context manager, and should generally be used
+within <cite>with</cite> statements to ensure the listening socket is
+properly closed. Note that sessions started from one of the
+<cite>accept</cite> functions may outlive the scope of this object and will
+not be closed automatically.</p>
+<p>Example of accepting a call-home connection with TLS:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">CallhomeManager</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">4335</span><span class="p">)</span> <span class="k">as</span> <span class="n">call_home_mgr</span><span class="p">:</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">call_home_mgr</span><span class="o">.</span><span class="n">accept_one_tls</span><span class="p">(</span><span class="n">keyfile</span><span class="o">=</span><span class="n">client_key</span><span class="p">,</span>
+                                           <span class="n">certfile</span><span class="o">=</span><span class="n">client_cert</span><span class="p">,</span>
+                                           <span class="n">ca_certs</span><span class="o">=</span><span class="n">ca_cert</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">Manager</span><span class="p">(</span><span class="n">session</span><span class="p">)</span> <span class="k">as</span> <span class="n">mgr</span><span class="p">:</span>
+    <span class="n">mgr</span><span class="o">.</span><span class="n">get_config</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s1">&#39;running&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.connect.CallhomeManager.accept_one">
+<span class="sig-name descname"><span class="pre">accept_one</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">120</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/connect.html#CallhomeManager.accept_one"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.connect.CallhomeManager.accept_one" title="Permalink to this definition">¶</a></dt>
+<dd><p>Accept a single TCP client and returns it</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>timeout</strong> (<em>int</em>) – Seconds to wait for an incoming connection</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.connect.CallhomeManager.accept_one_ssh">
+<span class="sig-name descname"><span class="pre">accept_one_ssh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/connect.html#CallhomeManager.accept_one_ssh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.connect.CallhomeManager.accept_one_ssh" title="Permalink to this definition">¶</a></dt>
+<dd><p>Accept a single TCP client and start an SSH session on it</p>
+<p>This function takes the same arguments as <a class="reference internal" href="#netconf_client.connect.connect_ssh" title="netconf_client.connect.connect_ssh"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect_ssh()</span></code></a></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.connect.CallhomeManager.accept_one_tls">
+<span class="sig-name descname"><span class="pre">accept_one_tls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/connect.html#CallhomeManager.accept_one_tls"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.connect.CallhomeManager.accept_one_tls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Accept a single TCP client and start a TLS session on it</p>
+<p>This function takes the same arguments as <a class="reference internal" href="#netconf_client.connect.connect_tls" title="netconf_client.connect.connect_tls"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect_tls()</span></code></a></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="netconf_client.connect.connect_ssh">
+<span class="sig-prename descclassname"><span class="pre">netconf_client.connect.</span></span><span class="sig-name descname"><span class="pre">connect_ssh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">830</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'netconf'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">120</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostkey_b64</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">general_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/connect.html#connect_ssh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.connect.connect_ssh" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connect to a NETCONF server over SSH.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>host</strong> (<em>str</em>) – Hostname or IP address; unused if an already-open
+socket is provided</p></li>
+<li><p><strong>port</strong> (<em>int</em>) – TCP port to initiate the connection; unused if an
+already-open socket is provided</p></li>
+<li><p><strong>username</strong> (<em>str</em>) – Username to login with; always required</p></li>
+<li><p><strong>password</strong> (<em>str</em>) – Password to login with; not required if a
+private key is provided instead</p></li>
+<li><p><strong>key_filename</strong> (<em>str</em>) – Path to an SSH private key; not required
+if a password is provided instead</p></li>
+<li><p><strong>sock</strong> – An already-open TCP socket; SSH will be setup on top
+of it</p></li>
+<li><p><strong>initial_timeout</strong> (<em>int</em>) – Seconds to wait when first connecting the socket.</p></li>
+<li><p><strong>general_timeout</strong> (<em>int</em>) – Seconds to wait for a response from the server after connecting.</p></li>
+<li><p><strong>timeout</strong> (<em>int</em>) – (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will
+be ignored if initial_timeout is not None, and will be removed in the next major release.</p></li>
+<li><p><strong>hostkey_b64</strong> (<em>str</em>) – base64 encoded hostkey.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Session</span></code> object</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#netconf_client.session.Session" title="netconf_client.session.Session"><code class="xref py py-class docutils literal notranslate"><span class="pre">netconf_client.session.Session</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="netconf_client.connect.connect_tls">
+<span class="sig-prename descclassname"><span class="pre">netconf_client.connect.</span></span><span class="sig-name descname"><span class="pre">connect_tls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6513</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keyfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">certfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ca_certs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">120</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">general_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/connect.html#connect_tls"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.connect.connect_tls" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connect to a NETCONF server over TLS.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>host</strong> (<em>str</em>) – Hostname or IP address; unused if an already-open
+socket is provided</p></li>
+<li><p><strong>port</strong> (<em>int</em>) – TCP port to initiate the connection; unused if an
+already-open socket is provided</p></li>
+<li><p><strong>keyfile</strong> – Path to the key file used to identify the client</p></li>
+<li><p><strong>certfile</strong> – Path to the certificate used to identify the client</p></li>
+<li><p><strong>ca_certs</strong> – Path to a file containing the certificate
+autority chains for verifying the server identity</p></li>
+<li><p><strong>sock</strong> – An already-open TCP socket; TLS will be setup on top
+of it</p></li>
+<li><p><strong>initial_timeout</strong> (<em>int</em>) – Seconds to wait when first connecting the socket.</p></li>
+<li><p><strong>general_timeout</strong> (<em>int</em>) – Seconds to wait for a response from the server after connecting.</p></li>
+<li><p><strong>timeout</strong> (<em>int</em>) – (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will
+be ignored if initial_timeout is not None, and will be removed in the next major release.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#netconf_client.session.Session" title="netconf_client.session.Session"><code class="xref py py-class docutils literal notranslate"><span class="pre">netconf_client.session.Session</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-netconf_client.ncclient">
+<span id="netconf-client-ncclient"></span><h2>netconf_client.ncclient<a class="headerlink" href="#module-netconf_client.ncclient" title="Permalink to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="netconf_client.ncclient.DataReply">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.ncclient.</span></span><span class="sig-name descname"><span class="pre">DataReply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ele</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#DataReply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.DataReply" title="Permalink to this definition">¶</a></dt>
+<dd><p>A response containing a <code class="docutils literal notranslate"><span class="pre">&lt;data&gt;</span></code> element</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data_xml</strong> (<em>str</em>) – The data element in string form (note that
+this value was handled by lxml)</p></li>
+<li><p><strong>data_ele</strong> – The lxml parsed representation of the data</p></li>
+<li><p><strong>raw_reply</strong> (<em>bytes</em>) – The raw reply from the server</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.ncclient.</span></span><span class="sig-name descname"><span class="pre">Manager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">120</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager" title="Permalink to this definition">¶</a></dt>
+<dd><p>A helper class for performing common NETCONF operations with pretty logging.</p>
+<p>This class attempts to be API compatible with the manager object
+from the original ncclient.</p>
+<p>This class is also a context manager and can be used with <cite>with</cite>
+statements to automatically close the underlying session.</p>
+<p>NETCONF requests and responses are logged using the <code class="docutils literal notranslate"><span class="pre">netconf_client.manager</span></code> scope.
+The log level is logger.DEBUG.</p>
+<p>Each log entry shows a log ID (the peers’ IP addresses as default).
+Additionally, the round-trip delay between request and its response is
+computed and displayed.</p>
+<p>The Python logger receives a dictionary via <cite>extra</cite> parameter, whose
+key is <code class="docutils literal notranslate"><span class="pre">ncclient.Manager.funcname</span></code> and which contains the name of
+the API function being logged.
+This information can be used for user-specific filtering.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>timeout</strong> (<em>float</em>) – Duration in seconds to wait for a reply</p></li>
+<li><p><strong>session</strong> – The underlying
+<a class="reference internal" href="#netconf_client.session.Session" title="netconf_client.session.Session"><code class="xref py py-class docutils literal notranslate"><span class="pre">netconf_client.session.Session</span></code></a> connected
+to the server</p></li>
+<li><p><strong>log_id</strong> (<em>str</em>) – application-specific log ID (None as default)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.cancel_commit">
+<span class="sig-name descname"><span class="pre">cancel_commit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">persist_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.cancel_commit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.cancel_commit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;cancel-commit&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>persist_id</strong> (<em>str</em>) – A persistent confirmed commit id given in the <code class="docutils literal notranslate"><span class="pre">&lt;commit&gt;</span></code>
+request. Can be None (default), if <code class="docutils literal notranslate"><span class="pre">&lt;cancel-commit&gt;</span></code> is issued
+on the same session that issued the confirmed commit.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.close_session">
+<span class="sig-name descname"><span class="pre">close_session</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.close_session"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.close_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;close-session&gt;</span></code> request</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.commit">
+<span class="sig-name descname"><span class="pre">commit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">confirmed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confirm_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">persist</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">persist_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.commit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.commit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;commit&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>confirmed</strong> (<em>bool</em>) – Set to <code class="docutils literal notranslate"><span class="pre">True</span></code> if this is a confirmed-commit</p></li>
+<li><p><strong>confirm_timeout</strong> (<em>int</em>) – When <cite>confirmed</cite> is <code class="docutils literal notranslate"><span class="pre">True</span></code>, the
+number of seconds until the commit
+will be automatically rolled back
+if no confirmation or extension is
+received</p></li>
+<li><p><strong>persist</strong> (<em>str</em>) – When <cite>confirmed</cite> is <code class="docutils literal notranslate"><span class="pre">True</span></code>, sets the
+persist-id token for the commit and makes
+the commit a persistent commit</p></li>
+<li><p><strong>persist_id</strong> (<em>str</em>) – When <cite>confirmed</cite> is <code class="docutils literal notranslate"><span class="pre">True</span></code> and a
+previous <code class="docutils literal notranslate"><span class="pre">&lt;persist&gt;</span></code> was given for
+the current commit, this field must
+match the corresponding persist-id for
+the commit</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.copy_config">
+<span class="sig-name descname"><span class="pre">copy_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_defaults</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.copy_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.copy_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;copy-config&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source</strong> (<em>str</em>) – The source datastore or the &lt;config&gt; element
+containing the complete configuration to copy.</p></li>
+<li><p><strong>target</strong> (<em>str</em>) – The destination datastore</p></li>
+<li><p><strong>with_defaults</strong> (<em>str</em>) – Specify the mode of default
+reporting.  See <span class="target" id="index-1"></span><a class="rfc reference external" href="https://datatracker.ietf.org/doc/html/rfc6243.html"><strong>RFC 6243</strong></a>. Can be
+<code class="docutils literal notranslate"><span class="pre">None</span></code> (i.e., omit the
+with-defaults tag in the request),
+‘report-all’, ‘report-all-tagged’,
+‘trim’, or ‘explicit’.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.create_subscription">
+<span class="sig-name descname"><span class="pre">create_subscription</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.create_subscription"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.create_subscription" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;create-subscription&gt;</span></code> request</p>
+<p>Received <code class="docutils literal notranslate"><span class="pre">&lt;notification&gt;</span></code> elements can be retrieved with
+<a class="reference internal" href="#netconf_client.ncclient.Manager.take_notification" title="netconf_client.ncclient.Manager.take_notification"><code class="xref py py-meth docutils literal notranslate"><span class="pre">take_notification()</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>stream</strong> (<em>str</em>) – The event stream to subscribe to</p></li>
+<li><p><strong>filter</strong> (<em>str</em>) – The filter for notifications to select</p></li>
+<li><p><strong>start_time</strong> (<em>str</em>) – When replaying notifications, the earliest notifications to replay</p></li>
+<li><p><strong>stop_time</strong> (<em>str</em>) – When replaying notifications, the latest notifications to replay</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.delete_config">
+<span class="sig-name descname"><span class="pre">delete_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.delete_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.delete_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;delete-config&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target</strong> (<em>str</em>) – The datastore to delete</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.discard_changes">
+<span class="sig-name descname"><span class="pre">discard_changes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.discard_changes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.discard_changes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;discard-changes&gt;</span></code> request</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.dispatch">
+<span class="sig-name descname"><span class="pre">dispatch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rpc</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.dispatch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.dispatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send an <code class="docutils literal notranslate"><span class="pre">&lt;rpc&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>rpc</strong> (<em>str</em>) – The RPC to send; it should not include an
+<code class="docutils literal notranslate"><span class="pre">&lt;rpc&gt;</span></code> tag (one will be generated for you)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#netconf_client.ncclient.RPCReply" title="netconf_client.ncclient.RPCReply"><code class="xref py py-class docutils literal notranslate"><span class="pre">RPCReply</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.edit_config">
+<span class="sig-name descname"><span class="pre">edit_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'running'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_operation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_option</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error_option</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">format</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'xml'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.edit_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.edit_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send an <code class="docutils literal notranslate"><span class="pre">&lt;edit-config&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<em>str</em>) – The <code class="docutils literal notranslate"><span class="pre">&lt;config&gt;</span></code> node to use in the request</p></li>
+<li><p><strong>target</strong> (<em>str</em>) – The datastore to edit</p></li>
+<li><p><strong>default_operation</strong> (<em>str</em>) – The default-operation to
+perform; can be <code class="docutils literal notranslate"><span class="pre">None</span></code>,
+‘merge’, ‘replace’, or ‘none’.</p></li>
+<li><p><strong>test_option</strong> (<em>str</em>) – The test-option to use; can be
+<code class="docutils literal notranslate"><span class="pre">None</span></code>, ‘test-then-set’, ‘set’, or
+‘test-only’</p></li>
+<li><p><strong>error_option</strong> (<em>str</em>) – The error-option to use; can be
+<code class="docutils literal notranslate"><span class="pre">None</span></code>, ‘stop-on-error’,
+‘continue-on-error’, or
+‘rollback-on-error’</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_defaults</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;get&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filter</strong> (<em>str</em>) – The <code class="docutils literal notranslate"><span class="pre">&lt;filter&gt;</span></code> node to use in the request</p></li>
+<li><p><strong>with_defaults</strong> (<em>str</em>) – Specify the mode of default
+reporting.  See <span class="target" id="index-2"></span><a class="rfc reference external" href="https://datatracker.ietf.org/doc/html/rfc6243.html"><strong>RFC 6243</strong></a>. Can be
+<code class="docutils literal notranslate"><span class="pre">None</span></code> (i.e., omit the
+with-defaults tag in the request),
+‘report-all’, ‘report-all-tagged’,
+‘trim’, or ‘explicit’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#netconf_client.ncclient.DataReply" title="netconf_client.ncclient.DataReply"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataReply</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.get_config">
+<span class="sig-name descname"><span class="pre">get_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'running'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_defaults</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.get_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.get_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;get-config&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source</strong> (<em>str</em>) – The datastore to retrieve the configuration from</p></li>
+<li><p><strong>filter</strong> (<em>str</em>) – The <code class="docutils literal notranslate"><span class="pre">&lt;filter&gt;</span></code> node to use in the request</p></li>
+<li><p><strong>with_defaults</strong> (<em>str</em>) – Specify the mode of default
+reporting.  See <span class="target" id="index-3"></span><a class="rfc reference external" href="https://datatracker.ietf.org/doc/html/rfc6243.html"><strong>RFC 6243</strong></a>. Can be
+<code class="docutils literal notranslate"><span class="pre">None</span></code> (i.e., omit the
+with-defaults tag in the request),
+‘report-all’, ‘report-all-tagged’,
+‘trim’, or ‘explicit’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#netconf_client.ncclient.DataReply" title="netconf_client.ncclient.DataReply"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataReply</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.kill_session">
+<span class="sig-name descname"><span class="pre">kill_session</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.kill_session"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.kill_session" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;kill-session&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>session_id</strong> (<em>int</em>) – The session to be killed</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.lock">
+<span class="sig-name descname"><span class="pre">lock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.lock"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.lock" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;lock&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target</strong> (<em>str</em>) – The datastore to be locked</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.logger">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">logger</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.logger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the internally used logger instance (same for all sessions)</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.session_id">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">session_id</span></span><a class="headerlink" href="#netconf_client.ncclient.Manager.session_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>The session ID given in the <code class="docutils literal notranslate"><span class="pre">&lt;hello&gt;</span></code> from the server</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.take_notification">
+<span class="sig-name descname"><span class="pre">take_notification</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">block</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.take_notification"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.take_notification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve a notification from the incoming notification queue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>block</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, the call will block the
+current thread until a notification is
+received or until <cite>timeout</cite> is exceeded</p></li>
+<li><p><strong>timeout</strong> (<em>float</em>) – The number of seconds to wait when
+<cite>block</cite> is <code class="docutils literal notranslate"><span class="pre">True</span></code>; when <code class="docutils literal notranslate"><span class="pre">None</span></code>, the
+call can block indefinitely</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#netconf_client.ncclient.Notification" title="netconf_client.ncclient.Notification"><code class="xref py py-class docutils literal notranslate"><span class="pre">Notification</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.unlock">
+<span class="sig-name descname"><span class="pre">unlock</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.unlock"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.unlock" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send an <code class="docutils literal notranslate"><span class="pre">&lt;unlock&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target</strong> (<em>str</em>) – The datastore to be unlocked</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.validate">
+<span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.validate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.validate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;validate&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>source</strong> (<em>str</em>) – The datastore to validate</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Notification">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.ncclient.</span></span><span class="sig-name descname"><span class="pre">Notification</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ele</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Notification"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Notification" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <code class="docutils literal notranslate"><span class="pre">&lt;notification&gt;</span></code> received from the server</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>notification_xml</strong> (<em>bytes</em>) – The raw notification as received from the server</p></li>
+<li><p><strong>notification_ele</strong> – The lxml parsed representation of the notification</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="netconf_client.ncclient.RPCReply">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.ncclient.</span></span><span class="sig-name descname"><span class="pre">RPCReply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">xml</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#RPCReply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.RPCReply" title="Permalink to this definition">¶</a></dt>
+<dd><p>A non-error response to an <code class="docutils literal notranslate"><span class="pre">&lt;rpc&gt;</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>xml</strong> (<em>str</em>) – The raw reply from the server</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="netconf_client.ncclient.to_ele">
+<span class="sig-prename descclassname"><span class="pre">netconf_client.ncclient.</span></span><span class="sig-name descname"><span class="pre">to_ele</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maybe_ele</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#to_ele"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.to_ele" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert the given string to an lxml element</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>maybe_ele</strong> – If this is a string, it will be parsed by
+lxml. If it is already an lxml element the
+parameter is returned unchanged</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-netconf_client.session">
+<span id="netconf-client-session"></span><h2>netconf_client.session<a class="headerlink" href="#module-netconf_client.session" title="Permalink to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="netconf_client.session.Session">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.session.</span></span><span class="sig-name descname"><span class="pre">Session</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sock</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/session.html#Session"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.session.Session" title="Permalink to this definition">¶</a></dt>
+<dd><p>A session with a NETCONF server</p>
+<p>This class is a context manager, and should always be either used
+with a <code class="docutils literal notranslate"><span class="pre">with</span></code> statement or the <a class="reference internal" href="#netconf_client.session.Session.close" title="netconf_client.session.Session.close"><code class="xref py py-meth docutils literal notranslate"><span class="pre">close()</span></code></a> method should be
+called manually when the object is no longer required.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>server_capabilities</strong> – The list of capabilities parsed from
+the server’s <code class="docutils literal notranslate"><span class="pre">&lt;hello&gt;</span></code></p></li>
+<li><p><strong>client_capabilities</strong> – The list of capabilities parsed from
+the client’s <code class="docutils literal notranslate"><span class="pre">&lt;hello&gt;</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.session.Session.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/session.html#Session.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.session.Session.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Closes any associated sockets and frees any other associated resources</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.session.Session.send_msg">
+<span class="sig-name descname"><span class="pre">send_msg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/session.html#Session.send_msg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.session.Session.send_msg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends a raw byte string to the server</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>msg</strong> (<em>bytes</em>) – The byte string to send</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.session.Session.send_rpc">
+<span class="sig-name descname"><span class="pre">send_rpc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rpc</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/session.html#Session.send_rpc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.session.Session.send_rpc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends a raw RPC to the server</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>rpc</strong> (<em>bytes</em>) – The RPC to send</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">concurrent.futures.Future</span></code> with a result type
+of tuple(<code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">lxml.Element</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-netconf_client.error">
+<span id="netconf-client-error"></span><h2>netconf_client.error<a class="headerlink" href="#module-netconf_client.error" title="Permalink to this heading">¶</a></h2>
+<dl class="py exception">
+<dt class="sig sig-object py" id="netconf_client.error.InvalidSSHHostkey">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.error.</span></span><span class="sig-name descname"><span class="pre">InvalidSSHHostkey</span></span><a class="reference internal" href="_modules/netconf_client/error.html#InvalidSSHHostkey"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.error.InvalidSSHHostkey" title="Permalink to this definition">¶</a></dt>
+<dd><p>This exception is raised if the SSH hostkey isn’t valid</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="netconf_client.error.NetconfClientException">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.error.</span></span><span class="sig-name descname"><span class="pre">NetconfClientException</span></span><a class="reference internal" href="_modules/netconf_client/error.html#NetconfClientException"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.error.NetconfClientException" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for all <code class="docutils literal notranslate"><span class="pre">netconf_client</span></code> exceptions</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="netconf_client.error.NetconfProtocolError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.error.</span></span><span class="sig-name descname"><span class="pre">NetconfProtocolError</span></span><a class="reference internal" href="_modules/netconf_client/error.html#NetconfProtocolError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.error.NetconfProtocolError" title="Permalink to this definition">¶</a></dt>
+<dd><p>This exception is raised on any NETCONF protocol error</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="netconf_client.error.RpcError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.error.</span></span><span class="sig-name descname"><span class="pre">RpcError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ele</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/error.html#RpcError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.error.RpcError" title="Permalink to this definition">¶</a></dt>
+<dd><p>This exception is raised on a future from an <code class="docutils literal notranslate"><span class="pre">&lt;rpc&gt;</span></code> call that
+returns a corresponding <code class="docutils literal notranslate"><span class="pre">&lt;rpc-error&gt;</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>reply_raw</strong> – The raw text that was returned by the server</p></li>
+<li><p><strong>reply_ele</strong> – The lxml parsed representation of the reply</p></li>
+<li><p><strong>message</strong> – If present, the contents of the <code class="docutils literal notranslate"><span class="pre">&lt;error-message&gt;</span></code> tag</p></li>
+<li><p><strong>tag</strong> – If present, the contents of the <code class="docutils literal notranslate"><span class="pre">&lt;error-tag&gt;</span></code> tag</p></li>
+<li><p><strong>info</strong> – If present, the contents of the <code class="docutils literal notranslate"><span class="pre">&lt;error-info&gt;</span></code> tag</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="netconf_client.error.SessionClosedException">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">netconf_client.error.</span></span><span class="sig-name descname"><span class="pre">SessionClosedException</span></span><a class="reference internal" href="_modules/netconf_client/error.html#SessionClosedException"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.error.SessionClosedException" title="Permalink to this definition">¶</a></dt>
+<dd><p>This exception is raised on any futures when the NETCONF connection is closed</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="index.html">Table of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">netconf_client: A Python NETCONF client</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration.html">Migrating</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">netconf_client API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-netconf_client.connect">netconf_client.connect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-netconf_client.ncclient">netconf_client.ncclient</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-netconf_client.session">netconf_client.session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-netconf_client.error">netconf_client.error</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="migration.html" title="previous chapter">Migrating</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/api.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018 ADTRAN, Inc..
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="_sources/api.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

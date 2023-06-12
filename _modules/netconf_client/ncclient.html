@@ -1,0 +1,643 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>netconf_client.ncclient &#8212; netconf_client  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for netconf_client.ncclient</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">socket</span> <span class="kn">import</span> <span class="n">error</span> <span class="k">as</span> <span class="n">socket_error</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">from</span> <span class="nn">concurrent.futures</span> <span class="kn">import</span> <span class="n">CancelledError</span><span class="p">,</span> <span class="ne">TimeoutError</span>
+<span class="kn">from</span> <span class="nn">queue</span> <span class="kn">import</span> <span class="n">Empty</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">from</span> <span class="nn">lxml</span> <span class="kn">import</span> <span class="n">etree</span>
+
+<span class="kn">from</span> <span class="nn">netconf_client.error</span> <span class="kn">import</span> <span class="n">RpcError</span>
+<span class="kn">from</span> <span class="nn">netconf_client.rpc</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">edit_config</span><span class="p">,</span>
+    <span class="n">get</span><span class="p">,</span>
+    <span class="n">get_config</span><span class="p">,</span>
+    <span class="n">copy_config</span><span class="p">,</span>
+    <span class="n">discard_changes</span><span class="p">,</span>
+    <span class="n">commit</span><span class="p">,</span>
+    <span class="n">cancel_commit</span><span class="p">,</span>
+    <span class="n">lock</span><span class="p">,</span>
+    <span class="n">unlock</span><span class="p">,</span>
+    <span class="n">kill_session</span><span class="p">,</span>
+    <span class="n">close_session</span><span class="p">,</span>
+    <span class="n">create_subscription</span><span class="p">,</span>
+    <span class="n">validate</span><span class="p">,</span>
+    <span class="n">make_rpc</span><span class="p">,</span>
+    <span class="n">delete_config</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Defines the scope for netconf traces</span>
+<span class="n">_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;netconf_client.manager&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_pretty_xml</span><span class="p">(</span><span class="n">xml</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reformats a given string containing an XML document (for human readable output)&quot;&quot;&quot;</span>
+
+    <span class="n">pretty</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">parser</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">XMLParser</span><span class="p">(</span><span class="n">remove_blank_text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">xml</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
+        <span class="n">pretty</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">pretty_print</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">etree</span><span class="o">.</span><span class="n">Error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">pretty</span> <span class="o">=</span> <span class="s2">&quot;Error: Cannot format XML message: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">Plain message is:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">xml</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">pretty</span>
+
+
+<div class="viewcode-block" id="Manager"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager">[docs]</a><span class="k">class</span> <span class="nc">Manager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A helper class for performing common NETCONF operations with pretty logging.</span>
+
+<span class="sd">    This class attempts to be API compatible with the manager object</span>
+<span class="sd">    from the original ncclient.</span>
+
+<span class="sd">    This class is also a context manager and can be used with `with`</span>
+<span class="sd">    statements to automatically close the underlying session.</span>
+
+<span class="sd">    NETCONF requests and responses are logged using the ``netconf_client.manager`` scope.</span>
+<span class="sd">    The log level is logger.DEBUG.</span>
+
+<span class="sd">    Each log entry shows a log ID (the peers&#39; IP addresses as default).</span>
+<span class="sd">    Additionally, the round-trip delay between request and its response is</span>
+<span class="sd">    computed and displayed.</span>
+
+<span class="sd">    The Python logger receives a dictionary via `extra` parameter, whose</span>
+<span class="sd">    key is ``ncclient.Manager.funcname`` and which contains the name of</span>
+<span class="sd">    the API function being logged.</span>
+<span class="sd">    This information can be used for user-specific filtering.</span>
+
+<span class="sd">    :ivar float timeout: Duration in seconds to wait for a reply</span>
+
+<span class="sd">    :ivar session: The underlying</span>
+<span class="sd">                   :class:`netconf_client.session.Session` connected</span>
+<span class="sd">                   to the server</span>
+<span class="sd">    :ivar str log_id: application-specific log ID (None as default)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">log_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct a new Manager object</span>
+
+<span class="sd">        :param session: The low-level NETCONF session to use for requests</span>
+<span class="sd">        :type session: :class:`netconf_client.session.Session`</span>
+
+<span class="sd">        :param float timeout: Duration in seconds to wait for replies</span>
+<span class="sd">        :param string log_id: log ID string additionally printed with</span>
+<span class="sd">               each log entry</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">session</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_id</span> <span class="o">=</span> <span class="n">log_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_timestamp</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_local_ip</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_peer_ip</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_funcname</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Manager.logger"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.logger">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">logger</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the internally used logger instance (same for all sessions)&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_logger</span></div>
+
+    <span class="k">def</span> <span class="nf">set_logger_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+        <span class="n">_logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">level</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_is_logger_enabled</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Manager</span><span class="o">.</span><span class="n">logger</span><span class="p">()</span><span class="o">.</span><span class="n">isEnabledFor</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_fetch_connection_ip</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieves and stores the connection&#39;s local and remote IP&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_local_ip</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_peer_ip</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_local_ip</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">getsockname</span><span class="p">()</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_peer_ip</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">getpeername</span><span class="p">()</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="n">socket_error</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_get_connection_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">direction</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns detailed connection info for logging&quot;&quot;&quot;</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_id</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_ip</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_peer_ip</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot; (</span><span class="si">{}</span><span class="s2">) </span><span class="si">{}</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> (</span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_local_ip</span><span class="p">,</span> <span class="n">direction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_peer_ip</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot; </span><span class="si">{}</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">direction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_id</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_local_ip</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_peer_ip</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="s2">&quot; </span><span class="si">{}</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_local_ip</span><span class="p">,</span> <span class="n">direction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_peer_ip</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">_fetch_funcname</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieves and stores the name of the API function being called&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_funcname</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">stack</span><span class="p">()[</span><span class="mi">3</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_log_rpc_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rpc_xml</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_logger_enabled</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fetch_funcname</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fetch_connection_ip</span><span class="p">()</span>
+            <span class="n">conn_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_connection_info</span><span class="p">(</span><span class="s2">&quot;=&gt;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_timestamp</span><span class="p">()</span>
+            <span class="n">pretty</span> <span class="o">=</span> <span class="n">_pretty_xml</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span>
+
+            <span class="n">Manager</span><span class="o">.</span><span class="n">logger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;NC Request</span><span class="si">%s</span><span class="s2">:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">conn_id</span><span class="p">,</span>
+                <span class="n">pretty</span><span class="p">,</span>
+                <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ncclient.Manager.funcname&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_funcname</span><span class="p">},</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_log_rpc_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rpc_xml</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_logger_enabled</span><span class="p">():</span>
+            <span class="n">end_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_timestamp</span><span class="p">()</span>
+            <span class="n">conn_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_connection_info</span><span class="p">(</span><span class="s2">&quot;&lt;=&quot;</span><span class="p">)</span>
+
+            <span class="n">taken</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span>
+            <span class="n">taken_formatted</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">.</span><span class="si">%03d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">taken</span><span class="o">.</span><span class="n">seconds</span><span class="p">,</span> <span class="n">taken</span><span class="o">.</span><span class="n">microseconds</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
+            <span class="n">pretty</span> <span class="o">=</span> <span class="n">_pretty_xml</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span> <span class="k">if</span> <span class="n">rpc_xml</span> <span class="k">else</span> <span class="s2">&quot;(None)&quot;</span>
+
+            <span class="n">Manager</span><span class="o">.</span><span class="n">logger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;NC Response</span><span class="si">%s</span><span class="s2"> (</span><span class="si">%s</span><span class="s2"> sec):</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">conn_id</span><span class="p">,</span>
+                <span class="n">taken_formatted</span><span class="p">,</span>
+                <span class="n">pretty</span><span class="p">,</span>
+                <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ncclient.Manager.funcname&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_funcname</span><span class="p">},</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_log_rpc_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_logger_enabled</span><span class="p">():</span>
+            <span class="n">end_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_timestamp</span><span class="p">()</span>
+            <span class="n">conn_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_connection_info</span><span class="p">(</span><span class="s2">&quot;&lt;=&quot;</span><span class="p">)</span>
+
+            <span class="n">taken</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_time</span>
+            <span class="n">taken_formatted</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2">.</span><span class="si">%03d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">taken</span><span class="o">.</span><span class="n">seconds</span><span class="p">,</span> <span class="n">taken</span><span class="o">.</span><span class="n">microseconds</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;Cause: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+            <span class="n">Manager</span><span class="o">.</span><span class="n">logger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;NC Failure</span><span class="si">%s</span><span class="s2"> (</span><span class="si">%s</span><span class="s2"> sec)</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">conn_id</span><span class="p">,</span>
+                <span class="n">taken_formatted</span><span class="p">,</span>
+                <span class="n">message</span><span class="p">,</span>
+                <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ncclient.Manager.funcname&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_funcname</span><span class="p">},</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_send_rpc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rpc_xml</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send given NC request message and expect a NC response</span>
+
+<span class="sd">        Both, the NC request and response messages are logged with timestamp.</span>
+<span class="sd">        In case of failure or exceptions, the error cause is logged, if known.</span>
+<span class="sd">        Exceptions thrown by functions called by _send_rpc() are re-raised</span>
+<span class="sd">        after they have been logged.</span>
+
+<span class="sd">        :param str rpc_xml: XML RPC message to sent to NC server</span>
+
+<span class="sd">        :rtype :tupel: (`str` raw XML response, `ElementTree`: Element Tree or None)</span>
+<span class="sd">        :exception: whatever exceptions raised by /netconf-client/netconf_client/ncclient.py</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log_rpc_request</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span>
+
+        <span class="n">current_timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+        <span class="n">end_timestamp</span> <span class="o">=</span> <span class="n">current_timestamp</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">send_rpc</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span>
+            <span class="k">while</span> <span class="n">current_timestamp</span> <span class="o">&lt;</span> <span class="n">end_timestamp</span><span class="p">:</span>
+                <span class="n">timeout</span> <span class="o">=</span> <span class="n">end_timestamp</span> <span class="o">-</span> <span class="n">current_timestamp</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">result</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">r</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_log_rpc_failure</span><span class="p">(</span><span class="s2">&quot;RPC returned without result&quot;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span> <span class="o">=</span> <span class="n">r</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_log_rpc_response</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">TimeoutError</span><span class="p">:</span>
+                    <span class="n">current_timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">current_timestamp</span> <span class="o">&gt;=</span> <span class="n">end_timestamp</span><span class="p">:</span>
+                        <span class="k">raise</span>
+        <span class="k">except</span> <span class="n">CancelledError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_rpc_failure</span><span class="p">(</span><span class="s2">&quot;RPC cancelled&quot;</span><span class="p">)</span>
+            <span class="k">raise</span>
+        <span class="k">except</span> <span class="ne">TimeoutError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_rpc_failure</span><span class="p">(</span><span class="s2">&quot;RPC timeout (max. </span><span class="si">{}</span><span class="s2"> seconds)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">))</span>
+            <span class="k">raise</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_rpc_failure</span><span class="p">(</span><span class="s2">&quot;RPC exception: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
+            <span class="k">raise</span>
+
+<div class="viewcode-block" id="Manager.edit_config"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.edit_config">[docs]</a>    <span class="k">def</span> <span class="nf">edit_config</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">,</span>
+        <span class="n">target</span><span class="o">=</span><span class="s2">&quot;running&quot;</span><span class="p">,</span>
+        <span class="n">default_operation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">test_option</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">error_option</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;xml&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send an ``&lt;edit-config&gt;`` request</span>
+
+<span class="sd">        :param str config: The ``&lt;config&gt;`` node to use in the request</span>
+
+<span class="sd">        :param str target: The datastore to edit</span>
+
+<span class="sd">        :param str default_operation: The default-operation to</span>
+<span class="sd">                                      perform; can be ``None``,</span>
+<span class="sd">                                      &#39;merge&#39;, &#39;replace&#39;, or &#39;none&#39;.</span>
+
+<span class="sd">        :param str test_option: The test-option to use; can be</span>
+<span class="sd">                               ``None``, &#39;test-then-set&#39;, &#39;set&#39;, or</span>
+<span class="sd">                               &#39;test-only&#39;</span>
+
+<span class="sd">        :param str error_option: The error-option to use; can be</span>
+<span class="sd">                                 ``None``, &#39;stop-on-error&#39;,</span>
+<span class="sd">                                 &#39;continue-on-error&#39;, or</span>
+<span class="sd">                                 &#39;rollback-on-error&#39;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rpc_xml</span> <span class="o">=</span> <span class="n">edit_config</span><span class="p">(</span>
+            <span class="n">config</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">default_operation</span><span class="p">,</span> <span class="n">test_option</span><span class="p">,</span> <span class="n">error_option</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Manager.get"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">with_defaults</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;get&gt;`` request</span>
+
+<span class="sd">        :param str filter: The ``&lt;filter&gt;`` node to use in the request</span>
+
+
+<span class="sd">        :param str with_defaults: Specify the mode of default</span>
+<span class="sd">                                  reporting.  See :rfc:`6243`. Can be</span>
+<span class="sd">                                  ``None`` (i.e., omit the</span>
+<span class="sd">                                  with-defaults tag in the request),</span>
+<span class="sd">                                  &#39;report-all&#39;, &#39;report-all-tagged&#39;,</span>
+<span class="sd">                                  &#39;trim&#39;, or &#39;explicit&#39;.</span>
+
+<span class="sd">        :rtype: :class:`DataReply`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rpc_xml</span> <span class="o">=</span> <span class="n">get</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="n">convert_filter</span><span class="p">(</span><span class="nb">filter</span><span class="p">),</span> <span class="n">with_defaults</span><span class="o">=</span><span class="n">with_defaults</span><span class="p">)</span>
+        <span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">DataReply</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Manager.get_config"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.get_config">[docs]</a>    <span class="k">def</span> <span class="nf">get_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s2">&quot;running&quot;</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">with_defaults</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;get-config&gt;`` request</span>
+
+<span class="sd">        :param str source: The datastore to retrieve the configuration from</span>
+
+<span class="sd">        :param str filter: The ``&lt;filter&gt;`` node to use in the request</span>
+
+<span class="sd">        :param str with_defaults: Specify the mode of default</span>
+<span class="sd">                                  reporting.  See :rfc:`6243`. Can be</span>
+<span class="sd">                                  ``None`` (i.e., omit the</span>
+<span class="sd">                                  with-defaults tag in the request),</span>
+<span class="sd">                                  &#39;report-all&#39;, &#39;report-all-tagged&#39;,</span>
+<span class="sd">                                  &#39;trim&#39;, or &#39;explicit&#39;.</span>
+
+<span class="sd">        :rtype: :class:`DataReply`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rpc_xml</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">(</span>
+            <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span>
+            <span class="nb">filter</span><span class="o">=</span><span class="n">convert_filter</span><span class="p">(</span><span class="nb">filter</span><span class="p">),</span>
+            <span class="n">with_defaults</span><span class="o">=</span><span class="n">with_defaults</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">DataReply</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Manager.copy_config"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.copy_config">[docs]</a>    <span class="k">def</span> <span class="nf">copy_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">with_defaults</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;copy-config&gt;`` request</span>
+
+<span class="sd">        :param str source: The source datastore or the &lt;config&gt; element</span>
+<span class="sd">                           containing the complete configuration to copy.</span>
+
+<span class="sd">        :param str target: The destination datastore</span>
+
+<span class="sd">        :param str with_defaults: Specify the mode of default</span>
+<span class="sd">                                  reporting.  See :rfc:`6243`. Can be</span>
+<span class="sd">                                  ``None`` (i.e., omit the</span>
+<span class="sd">                                  with-defaults tag in the request),</span>
+<span class="sd">                                  &#39;report-all&#39;, &#39;report-all-tagged&#39;,</span>
+<span class="sd">                                  &#39;trim&#39;, or &#39;explicit&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rpc_xml</span> <span class="o">=</span> <span class="n">copy_config</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span> <span class="n">with_defaults</span><span class="o">=</span><span class="n">with_defaults</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Manager.discard_changes"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.discard_changes">[docs]</a>    <span class="k">def</span> <span class="nf">discard_changes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;discard-changes&gt;`` request&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">discard_changes</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="Manager.commit"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.commit">[docs]</a>    <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">confirmed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">confirm_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">persist</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">persist_id</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;commit&gt;`` request</span>
+
+<span class="sd">        :param bool confirmed: Set to ``True`` if this is a confirmed-commit</span>
+
+<span class="sd">        :param int confirm_timeout: When `confirmed` is ``True``, the</span>
+<span class="sd">                                    number of seconds until the commit</span>
+<span class="sd">                                    will be automatically rolled back</span>
+<span class="sd">                                    if no confirmation or extension is</span>
+<span class="sd">                                    received</span>
+
+<span class="sd">        :param str persist: When `confirmed` is ``True``, sets the</span>
+<span class="sd">                            persist-id token for the commit and makes</span>
+<span class="sd">                            the commit a persistent commit</span>
+
+<span class="sd">        :param str persist_id: When `confirmed` is ``True`` and a</span>
+<span class="sd">                               previous ``&lt;persist&gt;`` was given for</span>
+<span class="sd">                               the current commit, this field must</span>
+<span class="sd">                               match the corresponding persist-id for</span>
+<span class="sd">                               the commit</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rpc_xml</span> <span class="o">=</span> <span class="n">commit</span><span class="p">(</span>
+            <span class="n">confirmed</span><span class="o">=</span><span class="n">confirmed</span><span class="p">,</span>
+            <span class="n">confirm_timeout</span><span class="o">=</span><span class="n">confirm_timeout</span><span class="p">,</span>
+            <span class="n">persist</span><span class="o">=</span><span class="n">persist</span><span class="p">,</span>
+            <span class="n">persist_id</span><span class="o">=</span><span class="n">persist_id</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Manager.cancel_commit"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.cancel_commit">[docs]</a>    <span class="k">def</span> <span class="nf">cancel_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">persist_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;cancel-commit&gt;`` request</span>
+
+<span class="sd">        :param str persist_id: A persistent confirmed commit id given in the ``&lt;commit&gt;``</span>
+<span class="sd">                               request. Can be None (default), if ``&lt;cancel-commit&gt;`` is issued</span>
+<span class="sd">                               on the same session that issued the confirmed commit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">cancel_commit</span><span class="p">(</span><span class="n">persist_id</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Manager.lock"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.lock">[docs]</a>    <span class="k">def</span> <span class="nf">lock</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;lock&gt;`` request</span>
+
+<span class="sd">        :param str target: The datastore to be locked</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">lock</span><span class="p">(</span><span class="n">target</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Manager.unlock"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.unlock">[docs]</a>    <span class="k">def</span> <span class="nf">unlock</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send an ``&lt;unlock&gt;`` request</span>
+
+<span class="sd">        :param str target: The datastore to be unlocked</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">unlock</span><span class="p">(</span><span class="n">target</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Manager.kill_session"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.kill_session">[docs]</a>    <span class="k">def</span> <span class="nf">kill_session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;kill-session&gt;`` request</span>
+
+<span class="sd">        :param int session_id: The session to be killed</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">kill_session</span><span class="p">(</span><span class="n">session_id</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Manager.close_session"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.close_session">[docs]</a>    <span class="k">def</span> <span class="nf">close_session</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;close-session&gt;`` request&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">close_session</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="Manager.create_subscription"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.create_subscription">[docs]</a>    <span class="k">def</span> <span class="nf">create_subscription</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stop_time</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;create-subscription&gt;`` request</span>
+
+<span class="sd">        Received ``&lt;notification&gt;`` elements can be retrieved with</span>
+<span class="sd">        :meth:`take_notification`</span>
+
+<span class="sd">        :param str stream: The event stream to subscribe to</span>
+<span class="sd">        :param str filter: The filter for notifications to select</span>
+<span class="sd">        :param str start_time: When replaying notifications, the earliest notifications to replay</span>
+<span class="sd">        :param str stop_time: When replaying notifications, the latest notifications to replay</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rpc_xml</span> <span class="o">=</span> <span class="n">create_subscription</span><span class="p">(</span>
+            <span class="n">stream</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="nb">filter</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="n">start_time</span><span class="p">,</span> <span class="n">stop_time</span><span class="o">=</span><span class="n">stop_time</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Manager.validate"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.validate">[docs]</a>    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;validate&gt;`` request</span>
+
+<span class="sd">        :param str source: The datastore to validate</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">validate</span><span class="p">(</span><span class="n">source</span><span class="p">))</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">session_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The session ID given in the ``&lt;hello&gt;`` from the server&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">session_id</span>
+
+<div class="viewcode-block" id="Manager.take_notification"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.take_notification">[docs]</a>    <span class="k">def</span> <span class="nf">take_notification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve a notification from the incoming notification queue.</span>
+
+<span class="sd">        :param bool block: If ``True``, the call will block the</span>
+<span class="sd">                           current thread until a notification is</span>
+<span class="sd">                           received or until `timeout` is exceeded</span>
+
+<span class="sd">        :param float timeout: The number of seconds to wait when</span>
+<span class="sd">                              `block` is ``True``; when ``None``, the</span>
+<span class="sd">                              call can block indefinitely</span>
+
+<span class="sd">        :rtype: :class:`Notification`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">notifications</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="n">block</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">Notification</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">Empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="Manager.dispatch"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.dispatch">[docs]</a>    <span class="k">def</span> <span class="nf">dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rpc</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send an ``&lt;rpc&gt;`` request</span>
+
+<span class="sd">        :param str rpc: The RPC to send; it should not include an</span>
+<span class="sd">                        ``&lt;rpc&gt;`` tag (one will be generated for you)</span>
+
+<span class="sd">        :rtype: :class:`RPCReply`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">make_rpc</span><span class="p">(</span><span class="n">from_ele</span><span class="p">(</span><span class="n">rpc</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">RPCReply</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Manager.delete_config"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.delete_config">[docs]</a>    <span class="k">def</span> <span class="nf">delete_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;delete-config&gt;`` request</span>
+
+<span class="sd">        :param str target: The datastore to delete</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">delete_config</span><span class="p">(</span><span class="n">target</span><span class="p">))</span></div></div>
+
+
+<div class="viewcode-block" id="DataReply"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.DataReply">[docs]</a><span class="k">class</span> <span class="nc">DataReply</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A response containing a ``&lt;data&gt;`` element</span>
+
+<span class="sd">    :ivar str data_xml: The data element in string form (note that</span>
+<span class="sd">                        this value was handled by lxml)</span>
+
+<span class="sd">    :ivar data_ele: The lxml parsed representation of the data</span>
+
+<span class="sd">    :ivar bytes raw_reply: The raw reply from the server</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_ele</span> <span class="o">=</span> <span class="n">ele</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;{urn:ietf:params:xml:ns:netconf:base:1.0}data&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_xml</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_ele</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">raw_reply</span> <span class="o">=</span> <span class="n">raw</span></div>
+
+
+<div class="viewcode-block" id="RPCReply"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.RPCReply">[docs]</a><span class="k">class</span> <span class="nc">RPCReply</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A non-error response to an ``&lt;rpc&gt;``</span>
+
+<span class="sd">    :ivar str xml: The raw reply from the server</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xml</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xml</span> <span class="o">=</span> <span class="n">xml</span></div>
+
+
+<div class="viewcode-block" id="Notification"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Notification">[docs]</a><span class="k">class</span> <span class="nc">Notification</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A ``&lt;notification&gt;`` received from the server</span>
+
+<span class="sd">    :ivar bytes notification_xml: The raw notification as received from the server</span>
+<span class="sd">    :ivar notification_ele: The lxml parsed representation of the notification</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">notification_ele</span> <span class="o">=</span> <span class="n">ele</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">notification_xml</span> <span class="o">=</span> <span class="n">raw</span></div>
+
+
+<span class="k">def</span> <span class="nf">convert_filter</span><span class="p">(</span><span class="nb">filter</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">filter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">filter</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="o">=</span> <span class="nb">filter</span>
+        <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;subtree&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&lt;filter&gt;</span><span class="si">{}</span><span class="s2">&lt;/filter&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Unimplemented filter type </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">kind</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="nb">filter</span>
+
+
+<span class="k">def</span> <span class="nf">from_ele</span><span class="p">(</span><span class="n">maybe_ele</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">etree</span><span class="o">.</span><span class="n">iselement</span><span class="p">(</span><span class="n">maybe_ele</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="n">maybe_ele</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">maybe_ele</span>
+
+
+<div class="viewcode-block" id="to_ele"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.to_ele">[docs]</a><span class="k">def</span> <span class="nf">to_ele</span><span class="p">(</span><span class="n">maybe_ele</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert the given string to an lxml element</span>
+
+<span class="sd">    :param maybe_ele: If this is a string, it will be parsed by</span>
+<span class="sd">                      lxml. If it is already an lxml element the</span>
+<span class="sd">                      parameter is returned unchanged</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">etree</span><span class="o">.</span><span class="n">iselement</span><span class="p">(</span><span class="n">maybe_ele</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">maybe_ele</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">etree</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">maybe_ele</span><span class="p">)</span></div>
+
+
+<span class="n">RPCError</span> <span class="o">=</span> <span class="n">RpcError</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="../../index.html">Table of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">netconf_client: A Python NETCONF client</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../migration.html">Migrating</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">netconf_client API</a></li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018 ADTRAN, Inc..
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
