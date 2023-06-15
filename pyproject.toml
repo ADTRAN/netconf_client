@@ -7,7 +7,7 @@ license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/ADTRAN/netconf_client"
 repository = "https://github.com/ADTRAN/netconf_client"
-documentation = "https://netconf-client.readthedocs.io"
+documentation = "https://adtran.github.io/netconf_client/"
 keywords = ["netconf"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -20,13 +20,14 @@ python = "^3.6.2"
 lxml = "^4.6.3"
 paramiko = "^2.7.2 || ^3"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^6.2"
 pylama = "^7.7"
 pylint = "^2.9"
 pytest-cov = "^2.12"
 black = "22.8.0"
 sphinx = "^5"
+coveralls = "^3.3.1"
 
 [tool.pytest.ini_options]
 addopts = "-vvl --cov=netconf_client --cov-branch --cov-report term-missing"

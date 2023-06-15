@@ -1,5 +1,6 @@
 ![Build Status](https://github.com/ADTRAN/netconf_client/workflows/CI%20Checks/badge.svg)
 [![PyPI version](https://badge.fury.io/py/netconf-client.svg)](https://badge.fury.io/py/netconf-client)
+[![Coverage Status](https://coveralls.io/repos/github/ADTRAN/netconf_client/badge.svg?branch=main)](https://coveralls.io/github/ADTRAN/netconf_client?branch=main)
 
 # netconf_client
 
