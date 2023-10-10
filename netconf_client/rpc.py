@@ -51,6 +51,40 @@ def get(filter=None, with_defaults=None, msg_id=None):
     return make_rpc("".join(pieces), msg_id=msg_id)
 
 
+def get_data(
+    datastore="ds:running",
+    filter=None,
+    config_filter=None,
+    origin_filter=None,
+    max_depth=None,
+    with_origin=None,
+    with_defaults=None,
+    msg_id=None,
+):
+    """Implement get-data call as defined in https://datatracker.ietf.org/doc/html/rfc8526"""
+    pieces = []
+    pieces.append('<get-data xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-nmda')
+    pieces.append('xmlns:ds="urn:ietf:params:xml:ns:yang:ietf-datastores"')
+    if origin_filter:
+        pieces.append('xmlns:or="urn:ietf:params:xml:ns:yang:ietf-origin"')
+    pieces.append(">")
+    pieces.append("<datastore>{}</datastore>".format(datastore))
+    if filter:
+        pieces.append(filter)
+    if config_filter:
+        pieces.append(config_filter)
+    if origin_filter:
+        pieces.append(origin_filter)
+    if max_depth:
+        pieces.append(max_depth)
+    if with_origin:
+        pieces.append(with_origin)
+    if with_defaults:
+        pieces.append(make_with_defaults(with_defaults))
+    pieces.append("</get-data>")
+    return make_rpc("".join(pieces), msg_id=msg_id)
+
+
 def get_config(source="running", filter=None, with_defaults=None, msg_id=None):
     pieces = []
     pieces.append('<get-config xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">')

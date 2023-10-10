@@ -13,6 +13,7 @@ from netconf_client.error import RpcError
 from netconf_client.rpc import (
     edit_config,
     get,
+    get_data,
     get_config,
     copy_config,
     discard_changes,
@@ -295,6 +296,55 @@ class Manager:
         (raw, ele) = self._send_rpc(rpc_xml)
         return DataReply(raw, ele)
 
+    def get_data(
+        self,
+        datastore="ds:running",
+        filter=None,
+        config_filter=None,
+        origin_filter=None,
+        max_depth=None,
+        with_origin=None,
+        with_defaults=None,
+    ):
+        """Send a ``<get-data>`` request
+
+        :param str or none datastore: The datastore configuration as defined in https://datatracker.ietf.org/doc/html/rfc8342
+        :param tuple or none filter: The ``<filter>`` node to use in the request
+        :param bool or none config_filter: config filter, should either be empty, true, or false.
+        :param tuple or none origin_filter: origin/negated origin filter as defined in https://datatracker.ietf.org/doc/html/rfc8342
+        :param num, str, or none max_depth: limit the number of subtree levels that are returned in the reply.
+        :param bool or none with_origin: Return the 'origin' annotation for nodes that have one.
+
+        :param str or none with_defaults: Specify the mode of default
+                                  reporting.  See :rfc:`6243`. Can be
+                                  ``None`` (i.e., omit the
+                                  with-defaults tag in the request),
+                                  'report-all', 'report-all-tagged',
+                                  'trim', or 'explicit'.
+
+        :rtype: :class:`DataReply`
+        """
+        if config_filter is not None:
+            config_filter = f"<config-filter>{config_filter}</config-filter>"
+        if max_depth:
+            max_depth = f"<max-depth>{max_depth}</max-depth>"
+        if with_origin:
+            with_origin = f"<with-origin/>"
+        if with_defaults:
+            with_defaults = f"<with-defaults>{with_defaults}</with-defaults>"
+
+        rpc_xml = get_data(
+            datastore=datastore,
+            filter=convert_get_data_filter(filter),
+            config_filter=config_filter,
+            origin_filter=convert_get_data_origin_filter(origin_filter),
+            max_depth=max_depth,
+            with_origin=with_origin,
+            with_defaults=with_defaults,
+        )
+        (raw, ele) = self._send_rpc(rpc_xml)
+        return DataReply(raw, ele)
+
     def get_config(self, source="running", filter=None, with_defaults=None):
         """Send a ``<get-config>`` request
 
@@ -515,6 +565,34 @@ class Notification:
     def __init__(self, raw, ele):
         self.notification_ele = ele
         self.notification_xml = raw
+
+
+def convert_get_data_filter(filter):
+    if filter is None:
+        return None
+
+    if isinstance(filter, tuple):
+        (kind, value) = filter
+        if kind == "subtree":
+            return "<subtree-filter>{}</subtree-filter>".format(value)
+        elif kind == "xpath":
+            return "<xpath-filter>{}</xpath-filter>".format(value)
+        else:
+            raise NotImplementedError("Unimplemented filter type {}".format(kind))
+
+
+def convert_get_data_origin_filter(filter):
+    if filter is None:
+        return None
+
+    if isinstance(filter, tuple):
+        (kind, values) = filter
+        if kind not in ["origin-filter", "negated-origin-filter"]:
+            raise NotImplementedError("Unimplemented filter type {}".format(kind))
+        return_value = ""
+        for value in values:
+            return_value.append(f"<{kind}>{value}</{kind}>")
+        return return_value
 
 
 def convert_filter(filter):
