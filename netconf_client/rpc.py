@@ -63,6 +63,40 @@ def get_config(source="running", filter=None, with_defaults=None, msg_id=None):
     return make_rpc("".join(pieces), msg_id=msg_id)
 
 
+def get_data(
+        datastore="ds:operational",
+        filter=None,
+        config_filter=None,
+        origin_filters=[],
+        negate_origin_filters=False,
+        max_depth=None,
+        with_origin=False,
+        with_defaults=None,
+        msg_id=None
+):
+    pieces = []
+    pieces.append('<get-data xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-nmda" '
+                  + 'xmlns:ds="urn:ietf:params:xml:ns:yang:ietf-datastores" '
+                  + 'xmlns:or="urn:ietf:params:xml:ns:yang:ietf-origin">')
+    assert(datastore.startswith("ds:"))
+    pieces.append("<datastore>{}</datastore>".format(datastore))
+    if filter:
+        pieces.append(filter)
+    if config_filter is not None:
+        pieces.append("<config-filter><{}/></config-filter>".format("true" if config_filter else "false"))
+    for origin in origin_filters:
+        tag = "negated-origin-filter" if negate_origin_filters else "origin-filter"
+        pieces.append("<{}>{}</{}>".format(tag, origin, tag))
+    if max_depth:
+        pieces.append("<max-depth>{}</max-depth>".format(max_depth))
+    if with_origin:
+        pieces.append("<with-origin/>")
+    if with_defaults:
+        pieces.append(make_with_defaults(with_defaults))
+    pieces.append("</get-data>")
+    return make_rpc("".join(pieces), msg_id=msg_id)
+
+
 def copy_config(target, source, filter=None, with_defaults=None, msg_id=None):
     pieces = []
     pieces.append("<copy-config>")
