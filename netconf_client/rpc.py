@@ -78,12 +78,14 @@ def get_data(
     pieces.append('<get-data xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-nmda" '
                   + 'xmlns:ds="urn:ietf:params:xml:ns:yang:ietf-datastores" '
                   + 'xmlns:or="urn:ietf:params:xml:ns:yang:ietf-origin">')
-    assert(datastore.startswith("ds:"))
     pieces.append("<datastore>{}</datastore>".format(datastore))
     if filter:
         pieces.append(filter)
     if config_filter is not None:
-        pieces.append("<config-filter><{}/></config-filter>".format("true" if config_filter else "false"))
+        if config_filter == True:
+            pieces.append("<config-filter>true</config-filter>")
+        else:
+            pieces.append("<config-filter>false</config-filter>")
     for origin in origin_filters:
         tag = "negated-origin-filter" if negate_origin_filters else "origin-filter"
         pieces.append("<{}>{}</{}>".format(tag, origin, tag))

@@ -387,7 +387,7 @@ def test_get_data(fake_id, log_id, log_local_ip, log_peer_ip, log_content):
               <get-data xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-nmda" xmlns:ds="urn:ietf:params:xml:ns:yang:ietf-datastores" xmlns:or="urn:ietf:params:xml:ns:yang:ietf-origin">
                 <datastore>ds:operational</datastore>
                 <subtree-filter>foo</subtree-filter>
-                <config-filter><true/></config-filter>
+                <config-filter>true</config-filter>
                 <negated-origin-filter>or:system</negated-origin-filter>
                 <negated-origin-filter>or:default</negated-origin-filter>
                 <with-defaults xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults">
