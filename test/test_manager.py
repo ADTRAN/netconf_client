@@ -288,7 +288,6 @@ def test_get(fake_id, log_id, log_local_ip, log_peer_ip, log_content):
         assert log_recorder.check_content("get", log_content)
 
 
-
 @pytest.mark.parametrize(
     "log_id,log_local_ip,log_peer_ip,log_content",
     [
@@ -302,7 +301,7 @@ def test_get(fake_id, log_id, log_local_ip, log_peer_ip, log_content):
                     "NC Request:\n",
                     "<get-data ",
                     "<subtree-filter>foo</subtree-filter>",
-                    "</get-data>"
+                    "</get-data>",
                 ],
                 [
                     r"NC Response \(\d+\.\d+ sec\):\n",
@@ -380,7 +379,13 @@ def test_get_data(fake_id, log_id, log_local_ip, log_peer_ip, log_content):
         [], log_local_ip, log_peer_ip
     ) as session, Manager(session, timeout=1, log_id=log_id) as mgr:
         session.replies.append((RPC_REPLY_DATA, etree.fromstring(RPC_REPLY_DATA)))
-        r = mgr.get_data(filter="<subtree-filter>foo</subtree-filter>", config_filter=True, origin_filters=["or:system", "or:default"], negate_origin_filters=True, with_defaults="explicit")
+        r = mgr.get_data(
+            filter="<subtree-filter>foo</subtree-filter>",
+            config_filter=True,
+            origin_filters=["or:system", "or:default"],
+            negate_origin_filters=True,
+            with_defaults="explicit",
+        )
         assert session.sent[0] == uglify(
             """
             <rpc message-id="fake-id" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
@@ -399,6 +404,7 @@ def test_get_data(fake_id, log_id, log_local_ip, log_peer_ip, log_content):
         )
         assert r.data_ele.text == "bar"
         assert log_recorder.check_content("get_data", log_content)
+
 
 def test_xml_error(fake_id):
     with LogSentry(True), MockSession([]) as session, Manager(

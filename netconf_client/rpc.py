@@ -64,20 +64,22 @@ def get_config(source="running", filter=None, with_defaults=None, msg_id=None):
 
 
 def get_data(
-        datastore="ds:operational",
-        filter=None,
-        config_filter=None,
-        origin_filters=[],
-        negate_origin_filters=False,
-        max_depth=None,
-        with_origin=False,
-        with_defaults=None,
-        msg_id=None
+    datastore="ds:operational",
+    filter=None,
+    config_filter=None,
+    origin_filters=[],
+    negate_origin_filters=False,
+    max_depth=None,
+    with_origin=False,
+    with_defaults=None,
+    msg_id=None,
 ):
     pieces = []
-    pieces.append('<get-data xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-nmda" '
-                  + 'xmlns:ds="urn:ietf:params:xml:ns:yang:ietf-datastores" '
-                  + 'xmlns:or="urn:ietf:params:xml:ns:yang:ietf-origin">')
+    pieces.append(
+        '<get-data xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-nmda" '
+        + 'xmlns:ds="urn:ietf:params:xml:ns:yang:ietf-datastores" '
+        + 'xmlns:or="urn:ietf:params:xml:ns:yang:ietf-origin">'
+    )
     pieces.append("<datastore>{}</datastore>".format(datastore))
     if filter:
         pieces.append(filter)

@@ -322,15 +322,15 @@ class Manager:
         return DataReply(raw, ele)
 
     def get_data(
-            self,
-            datastore="ds:operational",
-            filter=None,
-            config_filter=None,
-            origin_filters=[],
-            negate_origin_filters=False,
-            max_depth=None,
-            with_origin=False,
-            with_defaults=None
+        self,
+        datastore="ds:operational",
+        filter=None,
+        config_filter=None,
+        origin_filters=[],
+        negate_origin_filters=False,
+        max_depth=None,
+        with_origin=False,
+        with_defaults=None,
     ):
         """Send a ``<get-data>`` request
 
@@ -549,7 +549,9 @@ class DataReply:
     def __init__(self, raw, ele):
         self.data_ele = ele.find("{urn:ietf:params:xml:ns:netconf:base:1.0}data")
         if self.data_ele is None:
-            self.data_ele = ele.find("{urn:ietf:params:xml:ns:yang:ietf-netconf-nmda}data")
+            self.data_ele = ele.find(
+                "{urn:ietf:params:xml:ns:yang:ietf-netconf-nmda}data"
+            )
         self.data_xml = etree.tostring(self.data_ele)
         self.raw_reply = raw
 
