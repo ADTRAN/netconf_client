@@ -381,6 +381,40 @@ with-defaults tag in the request),
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="netconf_client.ncclient.Manager.get_data">
+<span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">datastore</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ds:operational'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin_filters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">negate_origin_filters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_origin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_defaults</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.get_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;get-data&gt;</span></code> request</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>datastore</strong> (<em>str</em>) – The datastore to retrieve the data from.</p></li>
+<li><p><strong>filter</strong> (<em>str</em>) – Either the <code class="docutils literal notranslate"><span class="pre">&lt;subtree-filter&gt;</span></code> or the
+<code class="docutils literal notranslate"><span class="pre">xpath-filter</span></code> node to use in the request.</p></li>
+<li><p><strong>config_filter</strong> (<em>bool</em>) – Specifies if only “config true” or only
+“config false” nodes are returned. Both
+are returned if unspecified.</p></li>
+<li><p><strong>origin_filters</strong> (<em>dict</em>) – A list of origins (e.g., “or:intended”).
+No origin filters are applied if unspecified.</p></li>
+<li><p><strong>negate_origin_filters</strong> (<em>bool</em>) – Specifies if origin_filters are negated.</p></li>
+<li><p><strong>max_depth</strong> (<em>int</em>) – A 16-bit unsigned integer.  If unspecified,
+the max-depth is unbounded.</p></li>
+<li><p><strong>with_origin</strong> (<em>bool</em>) – Specifies if the ‘origin’ annotation
+should be returned for nodes having one.</p></li>
+<li><p><strong>with_defaults</strong> (<em>str</em>) – Specify the mode of default
+reporting.  See <span class="target" id="index-4"></span><a class="rfc reference external" href="https://datatracker.ietf.org/doc/html/rfc6243.html"><strong>RFC 6243</strong></a>. Can be
+<code class="docutils literal notranslate"><span class="pre">None</span></code> (i.e., omit the
+with-defaults tag in the request),
+‘report-all’, ‘report-all-tagged’,
+‘trim’, or ‘explicit’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#netconf_client.ncclient.DataReply" title="netconf_client.ncclient.DataReply"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataReply</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="netconf_client.ncclient.Manager.kill_session">
 <span class="sig-name descname"><span class="pre">kill_session</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/netconf_client/ncclient.html#Manager.kill_session"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#netconf_client.ncclient.Manager.kill_session" title="Permalink to this definition">¶</a></dt>
 <dd><p>Send a <code class="docutils literal notranslate"><span class="pre">&lt;kill-session&gt;</span></code> request</p>

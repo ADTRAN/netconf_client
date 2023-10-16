@@ -49,6 +49,7 @@
     <span class="n">edit_config</span><span class="p">,</span>
     <span class="n">get</span><span class="p">,</span>
     <span class="n">get_config</span><span class="p">,</span>
+    <span class="n">get_data</span><span class="p">,</span>
     <span class="n">copy_config</span><span class="p">,</span>
     <span class="n">discard_changes</span><span class="p">,</span>
     <span class="n">commit</span><span class="p">,</span>
@@ -355,6 +356,62 @@
         <span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">DataReply</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="Manager.get_data"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">datastore</span><span class="o">=</span><span class="s2">&quot;ds:operational&quot;</span><span class="p">,</span>
+        <span class="nb">filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">config_filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">origin_filters</span><span class="o">=</span><span class="p">[],</span>
+        <span class="n">negate_origin_filters</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">max_depth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">with_origin</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">with_defaults</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;get-data&gt;`` request</span>
+
+<span class="sd">        :param str datastore: The datastore to retrieve the data from.</span>
+
+<span class="sd">        :param str filter: Either the ``&lt;subtree-filter&gt;`` or the</span>
+<span class="sd">                           ``xpath-filter`` node to use in the request.</span>
+
+<span class="sd">        :param bool config_filter: Specifies if only &quot;config true&quot; or only</span>
+<span class="sd">                                   &quot;config false&quot; nodes are returned. Both</span>
+<span class="sd">                                   are returned if unspecified.</span>
+
+<span class="sd">        :param dict origin_filters: A list of origins (e.g., &quot;or:intended&quot;).</span>
+<span class="sd">                                    No origin filters are applied if unspecified.</span>
+
+<span class="sd">        :param bool negate_origin_filters: Specifies if origin_filters are negated.</span>
+
+<span class="sd">        :param int max_depth: A 16-bit unsigned integer.  If unspecified,</span>
+<span class="sd">                              the max-depth is unbounded.</span>
+
+<span class="sd">        :param bool with_origin: Specifies if the &#39;origin&#39; annotation</span>
+<span class="sd">                                should be returned for nodes having one.</span>
+
+<span class="sd">        :param str with_defaults: Specify the mode of default</span>
+<span class="sd">                                  reporting.  See :rfc:`6243`. Can be</span>
+<span class="sd">                                  ``None`` (i.e., omit the</span>
+<span class="sd">                                  with-defaults tag in the request),</span>
+<span class="sd">                                  &#39;report-all&#39;, &#39;report-all-tagged&#39;,</span>
+<span class="sd">                                  &#39;trim&#39;, or &#39;explicit&#39;.</span>
+
+<span class="sd">        :rtype: :class:`DataReply`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rpc_xml</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span>
+            <span class="n">datastore</span><span class="o">=</span><span class="n">datastore</span><span class="p">,</span>
+            <span class="nb">filter</span><span class="o">=</span><span class="nb">filter</span><span class="p">,</span>
+            <span class="n">config_filter</span><span class="o">=</span><span class="n">config_filter</span><span class="p">,</span>
+            <span class="n">origin_filters</span><span class="o">=</span><span class="n">origin_filters</span><span class="p">,</span>
+            <span class="n">negate_origin_filters</span><span class="o">=</span><span class="n">negate_origin_filters</span><span class="p">,</span>
+            <span class="n">max_depth</span><span class="o">=</span><span class="n">max_depth</span><span class="p">,</span>
+            <span class="n">with_origin</span><span class="o">=</span><span class="n">with_origin</span><span class="p">,</span>
+            <span class="n">with_defaults</span><span class="o">=</span><span class="n">with_defaults</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_rpc</span><span class="p">(</span><span class="n">rpc_xml</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">DataReply</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="Manager.copy_config"><a class="viewcode-back" href="../../api.html#netconf_client.ncclient.Manager.copy_config">[docs]</a>    <span class="k">def</span> <span class="nf">copy_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">with_defaults</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a ``&lt;copy-config&gt;`` request</span>
 
@@ -526,6 +583,10 @@
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">ele</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data_ele</span> <span class="o">=</span> <span class="n">ele</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;{urn:ietf:params:xml:ns:netconf:base:1.0}data&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_ele</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_ele</span> <span class="o">=</span> <span class="n">ele</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                <span class="s2">&quot;{urn:ietf:params:xml:ns:yang:ietf-netconf-nmda}data&quot;</span>
+            <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data_xml</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_ele</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">raw_reply</span> <span class="o">=</span> <span class="n">raw</span></div>
 
