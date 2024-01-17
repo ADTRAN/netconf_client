@@ -61,3 +61,9 @@ class NetconfProtocolError(NetconfClientException):
     """This exception is raised on any NETCONF protocol error"""
 
     pass
+
+
+class InvalidSSHHostkey(NetconfClientException):
+    """This exception is raised if the SSH hostkey isn't valid"""
+
+    pass

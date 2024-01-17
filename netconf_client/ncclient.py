@@ -14,6 +14,7 @@ from netconf_client.rpc import (
     edit_config,
     get,
     get_config,
+    get_data,
     copy_config,
     discard_changes,
     commit,
@@ -320,6 +321,62 @@ class Manager:
         (raw, ele) = self._send_rpc(rpc_xml)
         return DataReply(raw, ele)
 
+    def get_data(
+        self,
+        datastore="ds:operational",
+        filter=None,
+        config_filter=None,
+        origin_filters=[],
+        negate_origin_filters=False,
+        max_depth=None,
+        with_origin=False,
+        with_defaults=None,
+    ):
+        """Send a ``<get-data>`` request
+
+        :param str datastore: The datastore to retrieve the data from.
+
+        :param str filter: Either the ``<subtree-filter>`` or the
+                           ``xpath-filter`` node to use in the request.
+
+        :param bool config_filter: Specifies if only "config true" or only
+                                   "config false" nodes are returned. Both
+                                   are returned if unspecified.
+
+        :param dict origin_filters: A list of origins (e.g., "or:intended").
+                                    No origin filters are applied if unspecified.
+
+        :param bool negate_origin_filters: Specifies if origin_filters are negated.
+
+        :param int max_depth: A 16-bit unsigned integer.  If unspecified,
+                              the max-depth is unbounded.
+
+        :param bool with_origin: Specifies if the 'origin' annotation
+                                should be returned for nodes having one.
+
+        :param str with_defaults: Specify the mode of default
+                                  reporting.  See :rfc:`6243`. Can be
+                                  ``None`` (i.e., omit the
+                                  with-defaults tag in the request),
+                                  'report-all', 'report-all-tagged',
+                                  'trim', or 'explicit'.
+
+        :rtype: :class:`DataReply`
+
+        """
+        rpc_xml = get_data(
+            datastore=datastore,
+            filter=filter,
+            config_filter=config_filter,
+            origin_filters=origin_filters,
+            negate_origin_filters=negate_origin_filters,
+            max_depth=max_depth,
+            with_origin=with_origin,
+            with_defaults=with_defaults,
+        )
+        (raw, ele) = self._send_rpc(rpc_xml)
+        return DataReply(raw, ele)
+
     def copy_config(self, target, source, with_defaults=None):
         """Send a ``<copy-config>`` request
 
@@ -491,6 +548,10 @@ class DataReply:
 
     def __init__(self, raw, ele):
         self.data_ele = ele.find("{urn:ietf:params:xml:ns:netconf:base:1.0}data")
+        if self.data_ele is None:
+            self.data_ele = ele.find(
+                "{urn:ietf:params:xml:ns:yang:ietf-netconf-nmda}data"
+            )
         self.data_xml = etree.tostring(self.data_ele)
         self.raw_reply = raw
 

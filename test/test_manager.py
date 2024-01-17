@@ -288,6 +288,124 @@ def test_get(fake_id, log_id, log_local_ip, log_peer_ip, log_content):
         assert log_recorder.check_content("get", log_content)
 
 
+@pytest.mark.parametrize(
+    "log_id,log_local_ip,log_peer_ip,log_content",
+    [
+        # no IDs
+        (
+            None,
+            None,
+            None,
+            [
+                [
+                    "NC Request:\n",
+                    "<get-data ",
+                    "<subtree-filter>foo</subtree-filter>",
+                    "</get-data>",
+                ],
+                [
+                    r"NC Response \(\d+\.\d+ sec\):\n",
+                    "<rpc-reply ",
+                    "<data>bar</data>",
+                    "</rpc-reply>",
+                ],
+            ],
+        ),
+        # log ID only
+        (
+            "Raspi-4",
+            None,
+            None,
+            [
+                [
+                    "NC Request => Raspi-4:\n",
+                    "<get-data ",
+                    "<subtree-filter>foo</subtree-filter>",
+                    "</get-data>",
+                ],
+                [
+                    r"NC Response <= Raspi-4 \(\d+\.\d+ sec\):\n",
+                    "<rpc-reply ",
+                    "<data>bar</data>",
+                    "</rpc-reply>",
+                ],
+            ],
+        ),
+        # connection IP addresses only
+        (
+            None,
+            "1.2.3.4",
+            "5.6.7.8",
+            [
+                [
+                    r"NC Request 1\.2\.3\.4 => 5\.6\.7\.8:\n",
+                    "<get-data ",
+                    "<subtree-filter>foo</subtree-filter>",
+                    "</get-data>",
+                ],
+                [
+                    r"NC Response 1\.2\.3\.4 <= 5\.6\.7\.8 \(\d+\.\d+ sec\):\n",
+                    "<rpc-reply ",
+                    "<data>bar</data>",
+                    "</rpc-reply>",
+                ],
+            ],
+        ),
+        # log ID and connection IP addresses
+        (
+            "Raspi-4",
+            "1.2.3.4",
+            "5.6.7.8",
+            [
+                [
+                    r"NC Request \(1\.2\.3\.4\) => Raspi-4 \(5\.6\.7\.8\):\n",
+                    "<get-data ",
+                    "<subtree-filter>foo</subtree-filter>",
+                    "</get-data>",
+                ],
+                [
+                    r"NC Response \(1\.2\.3\.4\) <= Raspi-4 \(5\.6\.7\.8\) \(\d+\.\d+ sec\):\n",
+                    "<rpc-reply ",
+                    "<data>bar</data>",
+                    "</rpc-reply>",
+                ],
+            ],
+        ),
+    ],
+    ids=["no IDs", "w/ log ID", "w/ IP addr", "w/ log ID+IP addr"],
+)
+def test_get_data(fake_id, log_id, log_local_ip, log_peer_ip, log_content):
+    with LogSentry(True), MockSession(
+        [], log_local_ip, log_peer_ip
+    ) as session, Manager(session, timeout=1, log_id=log_id) as mgr:
+        session.replies.append((RPC_REPLY_DATA, etree.fromstring(RPC_REPLY_DATA)))
+        r = mgr.get_data(
+            filter="<subtree-filter>foo</subtree-filter>",
+            config_filter=True,
+            origin_filters=["or:system", "or:default"],
+            negate_origin_filters=True,
+            with_defaults="explicit",
+        )
+        assert session.sent[0] == uglify(
+            """
+            <rpc message-id="fake-id" xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+              <get-data xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-nmda" xmlns:ds="urn:ietf:params:xml:ns:yang:ietf-datastores" xmlns:or="urn:ietf:params:xml:ns:yang:ietf-origin">
+                <datastore>ds:operational</datastore>
+                <subtree-filter>foo</subtree-filter>
+                <config-filter>true</config-filter>
+                <negated-origin-filter>or:system</negated-origin-filter>
+                <negated-origin-filter>or:default</negated-origin-filter>
+                <with-defaults xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults">
+                  explicit
+                </with-defaults>
+              </get-data>
+            </rpc>
+            """
+        )
+        assert r.data_ele.text == "bar"
+        assert log_recorder.check_content("get_data", log_content)
+
+
 def test_xml_error(fake_id):
     with LogSentry(True), MockSession([]) as session, Manager(
         session, timeout=1

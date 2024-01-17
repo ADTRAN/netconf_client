@@ -1,8 +1,10 @@
 import socket
 import ssl
+from base64 import b64decode
 
 import paramiko
 
+from netconf_client.error import InvalidSSHHostkey
 from netconf_client.session import Session
 from netconf_client.log import logger
 
@@ -15,6 +17,9 @@ def connect_ssh(
     key_filename=None,
     sock=None,
     timeout=120,
+    hostkey_b64=None,
+    initial_timeout=None,
+    general_timeout=None,
 ):
     """Connect to a NETCONF server over SSH.
 
@@ -35,18 +40,28 @@ def connect_ssh(
     :param sock: An already-open TCP socket; SSH will be setup on top
                  of it
 
-    :param int timeout: Seconds to wait when connecting the socket
+    :param int initial_timeout: Seconds to wait when first connecting the socket.
+
+    :param int general_timeout: Seconds to wait for a response from the server after connecting.
+
+    :param int timeout: (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will
+                        be ignored if initial_timeout is not None, and will be removed in the next major release.
+
+    :param str hostkey_b64: base64 encoded hostkey.
+
+    :return: :class:`Session` object
 
     :rtype: :class:`netconf_client.session.Session`
 
     """
     if not sock:
         sock = socket.socket()
-        sock.settimeout(timeout)
+        sock.settimeout(initial_timeout or timeout)
         sock.connect((host, port))
-        sock.settimeout(None)
+        sock.settimeout(general_timeout)
     transport = paramiko.transport.Transport(sock)
     pkey = _try_load_pkey(key_filename) if key_filename else None
+    hostkey = _try_load_hostkey_b64(hostkey_b64) if hostkey_b64 else None
     transport.connect(username=username, password=password, pkey=pkey)
     try:
         channel = transport.open_session()
@@ -71,6 +86,8 @@ def connect_tls(
     ca_certs=None,
     sock=None,
     timeout=120,
+    initial_timeout=None,
+    general_timeout=None,
 ):
     """Connect to a NETCONF server over TLS.
 
@@ -90,16 +107,21 @@ def connect_tls(
     :param sock: An already-open TCP socket; TLS will be setup on top
                  of it
 
-    :param int timeout: Seconds to wait when connecting the socket
+    :param int initial_timeout: Seconds to wait when first connecting the socket.
+
+    :param int general_timeout: Seconds to wait for a response from the server after connecting.
+
+    :param int timeout: (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will
+                        be ignored if initial_timeout is not None, and will be removed in the next major release.
 
     :rtype: :class:`netconf_client.session.Session`
 
     """
     if not sock:
         sock = socket.socket()
-        sock.settimeout(timeout)
+        sock.settimeout(initial_timeout or timeout)
         sock.connect((host, port))
-        sock.settimeout(None)
+        sock.settimeout(general_timeout)
     cert_reqs = ssl.CERT_REQUIRED if ca_certs else ssl.CERT_NONE
     ssl_sock = ssl.wrap_socket(  # pylint: disable=W1505
         sock, keyfile=keyfile, certfile=certfile, cert_reqs=cert_reqs, ca_certs=ca_certs
@@ -179,6 +201,15 @@ class CallhomeManager:
     def __exit__(self, _, __, ___):
         self.server_socket.shutdown(socket.SHUT_RDWR)
         self.server_socket.close()
+
+
+def _try_load_hostkey_b64(data):
+    for cls in (paramiko.RSAKey, paramiko.DSSKey, paramiko.ECDSAKey):
+        try:
+            return cls(data=b64decode(data))
+        except paramiko.SSHException:
+            pass
+    raise InvalidSSHHostkey()
 
 
 def _try_load_pkey(path):

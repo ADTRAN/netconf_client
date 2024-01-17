@@ -17,25 +17,33 @@ To this::
 Then you will need to migrate your connection code. For example, if
 your old connection method looked like this::
 
-  def mgr():
-      from ncclient import manager, operations
-      m = manager.connect_ssh(host='localhost', port=830,
-                              username='root', password='password',
-                              hostkey_verify=False,
-                              timeout=120,
-                              )
-      m.raise_mode = operations.RaiseMode.ALL
-      return m
+    def mgr():
+        from ncclient import manager, operations
+
+        m = manager.connect_ssh(
+            host="localhost",
+            port=830,
+            username="root",
+            password="password",
+            hostkey_verify=False,
+            timeout=120,
+        )
+        m.raise_mode = operations.RaiseMode.ALL
+        return m
 
 Then your new connection code should look like this::
 
-  def mgr():
-      from netconf_client.connect import connect_ssh
-      from netconf_client.ncclient import Manager
+    def mgr():
+        from netconf_client.connect import connect_ssh
+        from netconf_client.ncclient import Manager
 
-      s = connect_ssh(host='localhost', port=830,
-                      username='root',  password='password')    
-      return Manager(s, timeout=120)
+        s = connect_ssh(
+            host="localhost",
+            port=830,
+            username="root",
+            password="password",
+        )
+        return Manager(s, timeout=120)
 
 As long as the existing code isn't doing anything too crazy, these
 should be the only changes needed.
