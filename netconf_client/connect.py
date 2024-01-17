@@ -48,8 +48,17 @@ def connect_ssh(
     transport = paramiko.transport.Transport(sock)
     pkey = _try_load_pkey(key_filename) if key_filename else None
     transport.connect(username=username, password=password, pkey=pkey)
-    channel = transport.open_session()
-    channel.invoke_subsystem("netconf")
+    try:
+        channel = transport.open_session()
+    except Exception:
+        transport.close()
+        raise
+    try:
+        channel.invoke_subsystem("netconf")
+    except Exception:
+        channel.close()
+        transport.close()
+        raise
     bundle = SshSessionSock(sock, transport, channel)
     return Session(bundle)
 
