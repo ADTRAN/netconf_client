@@ -4,7 +4,7 @@
 
 # netconf_client
 
-A NETCONF client for Python 3.6+.
+A NETCONF client for Python 3.8+.
 
 ## Basic Usage
 
