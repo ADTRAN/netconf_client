@@ -110,7 +110,12 @@
         <span class="n">transport</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="k">raise</span>
     <span class="n">bundle</span> <span class="o">=</span> <span class="n">SshSessionSock</span><span class="p">(</span><span class="n">sock</span><span class="p">,</span> <span class="n">transport</span><span class="p">,</span> <span class="n">channel</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">Session</span><span class="p">(</span><span class="n">bundle</span><span class="p">)</span></div>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">session</span> <span class="o">=</span> <span class="n">Session</span><span class="p">(</span><span class="n">bundle</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">bundle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">raise</span>
+    <span class="k">return</span> <span class="n">session</span></div>
 
 
 <div class="viewcode-block" id="connect_tls"><a class="viewcode-back" href="../../api.html#netconf_client.connect.connect_tls">[docs]</a><span class="k">def</span> <span class="nf">connect_tls</span><span class="p">(</span>
