@@ -51,7 +51,6 @@
     <span class="n">password</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">key_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">sock</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
     <span class="n">hostkey_b64</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">initial_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">general_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -79,9 +78,6 @@
 
 <span class="sd">    :param int general_timeout: Seconds to wait for a response from the server after connecting.</span>
 
-<span class="sd">    :param int timeout: (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will</span>
-<span class="sd">                        be ignored if initial_timeout is not None, and will be removed in the next major release.</span>
-
 <span class="sd">    :param str hostkey_b64: base64 encoded hostkey.</span>
 
 <span class="sd">    :return: :class:`Session` object</span>
@@ -91,7 +87,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">sock</span><span class="p">:</span>
         <span class="n">sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">()</span>
-        <span class="n">sock</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="n">initial_timeout</span> <span class="ow">or</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">sock</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="n">initial_timeout</span><span class="p">)</span>
         <span class="n">sock</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
         <span class="n">sock</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="n">general_timeout</span><span class="p">)</span>
     <span class="n">transport</span> <span class="o">=</span> <span class="n">paramiko</span><span class="o">.</span><span class="n">transport</span><span class="o">.</span><span class="n">Transport</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
@@ -125,7 +121,6 @@
     <span class="n">certfile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">ca_certs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">sock</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
     <span class="n">initial_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">general_timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
@@ -151,15 +146,12 @@
 
 <span class="sd">    :param int general_timeout: Seconds to wait for a response from the server after connecting.</span>
 
-<span class="sd">    :param int timeout: (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will</span>
-<span class="sd">                        be ignored if initial_timeout is not None, and will be removed in the next major release.</span>
-
 <span class="sd">    :rtype: :class:`netconf_client.session.Session`</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">sock</span><span class="p">:</span>
         <span class="n">sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">()</span>
-        <span class="n">sock</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="n">initial_timeout</span> <span class="ow">or</span> <span class="n">timeout</span><span class="p">)</span>
+        <span class="n">sock</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="n">initial_timeout</span><span class="p">)</span>
         <span class="n">sock</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
         <span class="n">sock</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="n">general_timeout</span><span class="p">)</span>
     <span class="n">cert_reqs</span> <span class="o">=</span> <span class="n">ssl</span><span class="o">.</span><span class="n">CERT_REQUIRED</span> <span class="k">if</span> <span class="n">ca_certs</span> <span class="k">else</span> <span class="n">ssl</span><span class="o">.</span><span class="n">CERT_NONE</span>
