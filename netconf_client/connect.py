@@ -16,7 +16,6 @@ def connect_ssh(
     password=None,
     key_filename=None,
     sock=None,
-    timeout=120,
     hostkey_b64=None,
     initial_timeout=None,
     general_timeout=None,
@@ -44,9 +43,6 @@ def connect_ssh(
 
     :param int general_timeout: Seconds to wait for a response from the server after connecting.
 
-    :param int timeout: (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will
-                        be ignored if initial_timeout is not None, and will be removed in the next major release.
-
     :param str hostkey_b64: base64 encoded hostkey.
 
     :return: :class:`Session` object
@@ -56,7 +52,7 @@ def connect_ssh(
     """
     if not sock:
         sock = socket.socket()
-        sock.settimeout(initial_timeout or timeout)
+        sock.settimeout(initial_timeout)
         sock.connect((host, port))
         sock.settimeout(general_timeout)
     transport = paramiko.transport.Transport(sock)
@@ -85,7 +81,6 @@ def connect_tls(
     certfile=None,
     ca_certs=None,
     sock=None,
-    timeout=120,
     initial_timeout=None,
     general_timeout=None,
 ):
@@ -111,15 +106,12 @@ def connect_tls(
 
     :param int general_timeout: Seconds to wait for a response from the server after connecting.
 
-    :param int timeout: (Deprecated) Seconds to wait when connecting the socket if initial_timeout is None.  This will
-                        be ignored if initial_timeout is not None, and will be removed in the next major release.
-
     :rtype: :class:`netconf_client.session.Session`
 
     """
     if not sock:
         sock = socket.socket()
-        sock.settimeout(initial_timeout or timeout)
+        sock.settimeout(initial_timeout)
         sock.connect((host, port))
         sock.settimeout(general_timeout)
     cert_reqs = ssl.CERT_REQUIRED if ca_certs else ssl.CERT_NONE
