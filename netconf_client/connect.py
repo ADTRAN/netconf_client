@@ -75,7 +75,12 @@ def connect_ssh(
         transport.close()
         raise
     bundle = SshSessionSock(sock, transport, channel)
-    return Session(bundle)
+    try:
+        session = Session(bundle)
+    except Exception:
+        bundle.close()
+        raise
+    return session
 
 
 def connect_tls(
