@@ -204,7 +204,12 @@ class CallhomeManager:
 
 
 def _try_load_hostkey_b64(data):
-    for cls in (paramiko.RSAKey, paramiko.DSSKey, paramiko.ECDSAKey):
+    for cls in (
+        paramiko.RSAKey,
+        paramiko.DSSKey,
+        paramiko.ECDSAKey,
+        paramiko.Ed25519Key,
+    ):
         try:
             return cls(data=b64decode(data))
         except paramiko.SSHException:
@@ -213,7 +218,12 @@ def _try_load_hostkey_b64(data):
 
 
 def _try_load_pkey(path):
-    for cls in (paramiko.RSAKey, paramiko.DSSKey, paramiko.ECDSAKey):
+    for cls in (
+        paramiko.RSAKey,
+        paramiko.DSSKey,
+        paramiko.ECDSAKey,
+        paramiko.Ed25519Key,
+    ):
         try:
             return cls.from_private_key_file(path)
         except Exception:
