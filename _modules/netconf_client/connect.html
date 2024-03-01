@@ -236,7 +236,12 @@
 
 
 <span class="k">def</span> <span class="nf">_try_load_hostkey_b64</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-    <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="p">(</span><span class="n">paramiko</span><span class="o">.</span><span class="n">RSAKey</span><span class="p">,</span> <span class="n">paramiko</span><span class="o">.</span><span class="n">DSSKey</span><span class="p">,</span> <span class="n">paramiko</span><span class="o">.</span><span class="n">ECDSAKey</span><span class="p">):</span>
+    <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="n">paramiko</span><span class="o">.</span><span class="n">RSAKey</span><span class="p">,</span>
+        <span class="n">paramiko</span><span class="o">.</span><span class="n">DSSKey</span><span class="p">,</span>
+        <span class="n">paramiko</span><span class="o">.</span><span class="n">ECDSAKey</span><span class="p">,</span>
+        <span class="n">paramiko</span><span class="o">.</span><span class="n">Ed25519Key</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">b64decode</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
         <span class="k">except</span> <span class="n">paramiko</span><span class="o">.</span><span class="n">SSHException</span><span class="p">:</span>
@@ -245,7 +250,12 @@
 
 
 <span class="k">def</span> <span class="nf">_try_load_pkey</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
-    <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="p">(</span><span class="n">paramiko</span><span class="o">.</span><span class="n">RSAKey</span><span class="p">,</span> <span class="n">paramiko</span><span class="o">.</span><span class="n">DSSKey</span><span class="p">,</span> <span class="n">paramiko</span><span class="o">.</span><span class="n">ECDSAKey</span><span class="p">):</span>
+    <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="n">paramiko</span><span class="o">.</span><span class="n">RSAKey</span><span class="p">,</span>
+        <span class="n">paramiko</span><span class="o">.</span><span class="n">DSSKey</span><span class="p">,</span>
+        <span class="n">paramiko</span><span class="o">.</span><span class="n">ECDSAKey</span><span class="p">,</span>
+        <span class="n">paramiko</span><span class="o">.</span><span class="n">Ed25519Key</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">from_private_key_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
