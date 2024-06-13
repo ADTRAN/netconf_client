@@ -119,10 +119,15 @@ def connect_tls(
         sock.settimeout(initial_timeout)
         sock.connect((host, port))
         sock.settimeout(general_timeout)
-    cert_reqs = ssl.CERT_REQUIRED if ca_certs else ssl.CERT_NONE
-    ssl_sock = ssl.wrap_socket(  # pylint: disable=W1505
-        sock, keyfile=keyfile, certfile=certfile, cert_reqs=cert_reqs, ca_certs=ca_certs
-    )
+
+    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+    context.load_cert_chain(certfile, keyfile)
+    if ca_certs:
+        context.load_verify_locations(cafile=ca_certs)
+        context.verify_mode = ssl.CERT_REQUIRED
+    else:
+        context.verify_mode = ssl.CERT_NONE
+    ssl_sock = context.wrap_socket(sock)
     return Session(ssl_sock)
 
 
