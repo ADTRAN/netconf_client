@@ -60,7 +60,7 @@ def connect_ssh(
     hostkey = _try_load_hostkey_b64(hostkey_b64) if hostkey_b64 else None
     transport.connect(username=username, password=password, pkey=pkey)
     try:
-        channel = transport.open_session()
+        channel = transport.open_session(timeout=general_timeout)
     except Exception:
         transport.close()
         raise
@@ -177,7 +177,8 @@ class CallhomeManager:
         self.server_socket.settimeout(timeout)
         (sock, remote_host) = self.server_socket.accept()
         self.server_socket.settimeout(None)
-        logger.info("Callhome connection initiated from remote host %s", remote_host)
+        logger.info(
+            "Callhome connection initiated from remote host %s", remote_host)
         return sock
 
     def accept_one_ssh(self, *args, **kwds):
