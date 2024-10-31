@@ -177,8 +177,7 @@ class CallhomeManager:
         self.server_socket.settimeout(timeout)
         (sock, remote_host) = self.server_socket.accept()
         self.server_socket.settimeout(None)
-        logger.info(
-            "Callhome connection initiated from remote host %s", remote_host)
+        logger.info("Callhome connection initiated from remote host %s", remote_host)
         return sock
 
     def accept_one_ssh(self, *args, **kwds):
