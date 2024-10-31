@@ -60,7 +60,7 @@ def connect_ssh(
     hostkey = _try_load_hostkey_b64(hostkey_b64) if hostkey_b64 else None
     transport.connect(username=username, password=password, pkey=pkey)
     try:
-        channel = transport.open_session()
+        channel = transport.open_session(timeout=general_timeout)
     except Exception:
         transport.close()
         raise
