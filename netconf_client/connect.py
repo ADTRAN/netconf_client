@@ -60,6 +60,8 @@ def connect_ssh(
     hostkey = _try_load_hostkey_b64(hostkey_b64) if hostkey_b64 else None
     transport.connect(username=username, password=password, pkey=pkey)
     try:
+        #  Paramiko always opens the channel in blocking mode, even when a timeout is specified.  See https://github.com/paramiko/paramiko/blob/23f92003898b060df0e2b8b1d889455264e63a3e/paramiko/channel.py#L612-L633
+        #  This means that even if the Transport is holding a non-blocking socket, and the channel is created with a timeout, a channel.read() call can still hang if the remote misbehaves.
         channel = transport.open_session(timeout=initial_timeout)
         channel.settimeout(general_timeout)
     except Exception:
