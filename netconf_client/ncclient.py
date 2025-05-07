@@ -85,7 +85,15 @@ class Manager:
     @staticmethod
     def _timeout_from_arg(timeout, default):
         return (
-            timeout if isinstance(timeout, (int, float, )) and timeout >= 1 
+            timeout
+            if isinstance(
+                timeout,
+                (
+                    int,
+                    float,
+                ),
+            )
+            and timeout >= 1
             else default
         )
 
@@ -118,11 +126,11 @@ class Manager:
 
     def set_rpc_timeout(self, timeout=DEFAULT_RPC_TIMEOUT):
         """
-            Sets a new RPC timeout value or restores the default.
+        Sets a new RPC timeout value or restores the default.
 
-            :param float,int timeout: Duration in seconds to wait for replies (greater zero)
+        :param float,int timeout: Duration in seconds to wait for replies (greater zero)
 
-            If an invalid value is passed, the default value DEFAULT_RPC_TIMEOUT is set. 
+        If an invalid value is passed, the default value DEFAULT_RPC_TIMEOUT is set.
         """
         self.timeout = Manager._timeout_from_arg(timeout, Manager.DEFAULT_RPC_TIMEOUT)
 
@@ -229,7 +237,7 @@ class Manager:
         after they have been logged.
 
         :param str rpc_xml: XML RPC message to sent to NC server
-        
+
         :param timeout (optional): Applies a specific timeout value for this _send_rpc() call.
                If given, this timeout is used instead of the set timeout
                (see __init__() and set_rpc_timeout()).
@@ -331,7 +339,9 @@ class Manager:
         (raw, ele) = self._send_rpc(rpc_xml, timeout)
         return DataReply(raw, ele)
 
-    def get_config(self, source="running", filter=None, with_defaults=None, timeout=None):
+    def get_config(
+        self, source="running", filter=None, with_defaults=None, timeout=None
+    ):
         """Send a ``<get-config>`` request
 
         :param str source: The datastore to retrieve the configuration from
@@ -448,7 +458,12 @@ class Manager:
         self._send_rpc(discard_changes(), timeout)
 
     def commit(
-        self, confirmed=False, confirm_timeout=None, persist=None, persist_id=None, timeout=None
+        self,
+        confirmed=False,
+        confirm_timeout=None,
+        persist=None,
+        persist_id=None,
+        timeout=None,
     ):
         """Send a ``<commit>`` request
 
