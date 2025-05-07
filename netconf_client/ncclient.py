@@ -70,7 +70,8 @@ class Manager:
     the API function being logged.
     This information can be used for user-specific filtering.
 
-    :ivar float timeout: Duration in seconds to wait for a reply
+    :ivar float timeout: Duration in seconds to wait for a reply,
+        default is 120 seconds (see DEFAULT_RPC_TIMEOUT)
 
     :ivar session: The underlying
                    :class:`netconf_client.session.Session` connected
@@ -79,7 +80,16 @@ class Manager:
 
     """
 
-    def __init__(self, session, timeout=120, log_id=None):
+    DEFAULT_RPC_TIMEOUT = 120  # default RPC timeout in seconds
+
+    @staticmethod
+    def _timeout_from_arg(timeout, default):
+        return (
+            timeout if isinstance(timeout, (int, float, )) and timeout >= 1 
+            else default
+        )
+
+    def __init__(self, session, timeout=DEFAULT_RPC_TIMEOUT, log_id=None):
         """Construct a new Manager object
 
         :param session: The low-level NETCONF session to use for requests
@@ -89,7 +99,7 @@ class Manager:
         :param string log_id: log ID string additionally printed with
                each log entry
         """
-        self.timeout = timeout
+        self.timeout = Manager._timeout_from_arg(timeout, Manager.DEFAULT_RPC_TIMEOUT)
         self.session = session
         self.log_id = log_id
         self._start_time = self._get_timestamp()
@@ -102,6 +112,19 @@ class Manager:
 
     def __exit__(self, a, b, c):
         self.session.__exit__(a, b, c)
+
+    def get_rpc_timeout(self):
+        return self.timeout
+
+    def set_rpc_timeout(self, timeout=DEFAULT_RPC_TIMEOUT):
+        """
+            Sets a new RPC timeout value or restores the default.
+
+            :param float,int timeout: Duration in seconds to wait for replies (greater zero)
+
+            If an invalid value is passed, the default value DEFAULT_RPC_TIMEOUT is set. 
+        """
+        self.timeout = Manager._timeout_from_arg(timeout, Manager.DEFAULT_RPC_TIMEOUT)
 
     @staticmethod
     def logger():
@@ -197,7 +220,7 @@ class Manager:
                 extra={"ncclient.Manager.funcname": self._funcname},
             )
 
-    def _send_rpc(self, rpc_xml):
+    def _send_rpc(self, rpc_xml, timeout=None):
         """Send given NC request message and expect a NC response
 
         Both, the NC request and response messages are logged with timestamp.
@@ -206,6 +229,11 @@ class Manager:
         after they have been logged.
 
         :param str rpc_xml: XML RPC message to sent to NC server
+        
+        :param timeout (optional): Applies a specific timeout value for this _send_rpc() call.
+               If given, this timeout is used instead of the set timeout
+               (see __init__() and set_rpc_timeout()).
+               The set timeout value is not changed.
 
         :rtype :tupel: (`str` raw XML response, `ElementTree`: Element Tree or None)
         :exception: whatever exceptions raised by /netconf-client/netconf_client/ncclient.py
@@ -214,8 +242,9 @@ class Manager:
         (raw, ele) = (None, None)
         self._log_rpc_request(rpc_xml)
 
+        rpc_timeout = Manager._timeout_from_arg(timeout, self.timeout)
         current_timestamp = time.monotonic()
-        end_timestamp = current_timestamp + self.timeout
+        end_timestamp = current_timestamp + rpc_timeout
         try:
             f = self.session.send_rpc(rpc_xml)
             while current_timestamp < end_timestamp:
@@ -230,13 +259,13 @@ class Manager:
                     return (raw, ele)
                 except TimeoutError:
                     current_timestamp = time.monotonic()
-                    if current_timestamp >= end_timestamp:
+                    if current_timestamp > end_timestamp:
                         raise
         except CancelledError:
             self._log_rpc_failure("RPC cancelled")
             raise
         except TimeoutError:
-            self._log_rpc_failure("RPC timeout (max. {} seconds)".format(self.timeout))
+            self._log_rpc_failure("RPC timeout (max. {} seconds)".format(rpc_timeout))
             raise
         except Exception as e:
             message = str(e)
@@ -251,6 +280,7 @@ class Manager:
         test_option=None,
         error_option=None,
         format="xml",
+        timeout=None,
     ):
         """Send an ``<edit-config>`` request
 
@@ -271,17 +301,19 @@ class Manager:
                                  'continue-on-error', or
                                  'rollback-on-error'
 
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
         """
+
         rpc_xml = edit_config(
             config, target, default_operation, test_option, error_option
         )
-        self._send_rpc(rpc_xml)
+        self._send_rpc(rpc_xml, timeout)
 
-    def get(self, filter=None, with_defaults=None):
+    def get(self, filter=None, with_defaults=None, timeout=None):
         """Send a ``<get>`` request
 
         :param str filter: The ``<filter>`` node to use in the request
-
 
         :param str with_defaults: Specify the mode of default
                                   reporting.  See :rfc:`6243`. Can be
@@ -290,13 +322,16 @@ class Manager:
                                   'report-all', 'report-all-tagged',
                                   'trim', or 'explicit'.
 
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
+
         :rtype: :class:`DataReply`
         """
         rpc_xml = get(filter=convert_filter(filter), with_defaults=with_defaults)
-        (raw, ele) = self._send_rpc(rpc_xml)
+        (raw, ele) = self._send_rpc(rpc_xml, timeout)
         return DataReply(raw, ele)
 
-    def get_config(self, source="running", filter=None, with_defaults=None):
+    def get_config(self, source="running", filter=None, with_defaults=None, timeout=None):
         """Send a ``<get-config>`` request
 
         :param str source: The datastore to retrieve the configuration from
@@ -310,6 +345,9 @@ class Manager:
                                   'report-all', 'report-all-tagged',
                                   'trim', or 'explicit'.
 
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
+
         :rtype: :class:`DataReply`
 
         """
@@ -318,7 +356,7 @@ class Manager:
             filter=convert_filter(filter),
             with_defaults=with_defaults,
         )
-        (raw, ele) = self._send_rpc(rpc_xml)
+        (raw, ele) = self._send_rpc(rpc_xml, timeout)
         return DataReply(raw, ele)
 
     def get_data(
@@ -331,6 +369,7 @@ class Manager:
         max_depth=None,
         with_origin=False,
         with_defaults=None,
+        timeout=None,
     ):
         """Send a ``<get-data>`` request
 
@@ -361,8 +400,10 @@ class Manager:
                                   'report-all', 'report-all-tagged',
                                   'trim', or 'explicit'.
 
-        :rtype: :class:`DataReply`
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
 
+        :rtype: :class:`DataReply`
         """
         rpc_xml = get_data(
             datastore=datastore,
@@ -374,10 +415,10 @@ class Manager:
             with_origin=with_origin,
             with_defaults=with_defaults,
         )
-        (raw, ele) = self._send_rpc(rpc_xml)
+        (raw, ele) = self._send_rpc(rpc_xml, timeout)
         return DataReply(raw, ele)
 
-    def copy_config(self, target, source, with_defaults=None):
+    def copy_config(self, target, source, with_defaults=None, timeout=None):
         """Send a ``<copy-config>`` request
 
         :param str source: The source datastore or the <config> element
@@ -391,16 +432,23 @@ class Manager:
                                   with-defaults tag in the request),
                                   'report-all', 'report-all-tagged',
                                   'trim', or 'explicit'.
+
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
         """
         rpc_xml = copy_config(target=target, source=source, with_defaults=with_defaults)
-        self._send_rpc(rpc_xml)
+        self._send_rpc(rpc_xml, timeout)
 
-    def discard_changes(self):
-        """Send a ``<discard-changes>`` request"""
-        self._send_rpc(discard_changes())
+    def discard_changes(self, timeout=None):
+        """Send a ``<discard-changes>`` request
+
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
+        """
+        self._send_rpc(discard_changes(), timeout)
 
     def commit(
-        self, confirmed=False, confirm_timeout=None, persist=None, persist_id=None
+        self, confirmed=False, confirm_timeout=None, persist=None, persist_id=None, timeout=None
     ):
         """Send a ``<commit>`` request
 
@@ -422,6 +470,9 @@ class Manager:
                                match the corresponding persist-id for
                                the commit
 
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
+
         """
         rpc_xml = commit(
             confirmed=confirmed,
@@ -429,44 +480,60 @@ class Manager:
             persist=persist,
             persist_id=persist_id,
         )
-        self._send_rpc(rpc_xml)
+        self._send_rpc(rpc_xml, timeout)
 
-    def cancel_commit(self, persist_id: Optional[str] = None):
+    def cancel_commit(self, persist_id: Optional[str] = None, timeout=None):
         """Send a ``<cancel-commit>`` request
 
         :param str persist_id: A persistent confirmed commit id given in the ``<commit>``
                                request. Can be None (default), if ``<cancel-commit>`` is issued
                                on the same session that issued the confirmed commit.
-        """
-        self._send_rpc(cancel_commit(persist_id))
 
-    def lock(self, target):
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
+        """
+        self._send_rpc(cancel_commit(persist_id), timeout)
+
+    def lock(self, target, timeout=None):
         """Send a ``<lock>`` request
 
         :param str target: The datastore to be locked
-        """
-        self._send_rpc(lock(target))
 
-    def unlock(self, target):
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
+        """
+        self._send_rpc(lock(target), timeout)
+
+    def unlock(self, target, timeout=None):
         """Send an ``<unlock>`` request
 
         :param str target: The datastore to be unlocked
-        """
-        self._send_rpc(unlock(target))
 
-    def kill_session(self, session_id):
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
+        """
+        self._send_rpc(unlock(target), timeout)
+
+    def kill_session(self, session_id, timeout=None):
         """Send a ``<kill-session>`` request
 
         :param int session_id: The session to be killed
-        """
-        self._send_rpc(kill_session(session_id))
 
-    def close_session(self):
-        """Send a ``<close-session>`` request"""
-        self._send_rpc(close_session())
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
+        """
+        self._send_rpc(kill_session(session_id), timeout)
+
+    def close_session(self, timeout=None):
+        """Send a ``<close-session>`` request
+
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
+        """
+        self._send_rpc(close_session(), timeout)
 
     def create_subscription(
-        self, stream=None, filter=None, start_time=None, stop_time=None
+        self, stream=None, filter=None, start_time=None, stop_time=None, timeout=None
     ):
         """Send a ``<create-subscription>`` request
 
@@ -477,19 +544,23 @@ class Manager:
         :param str filter: The filter for notifications to select
         :param str start_time: When replaying notifications, the earliest notifications to replay
         :param str stop_time: When replaying notifications, the latest notifications to replay
-
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
         """
         rpc_xml = create_subscription(
             stream=stream, filter=filter, start_time=start_time, stop_time=stop_time
         )
-        self._send_rpc(rpc_xml)
+        self._send_rpc(rpc_xml, timeout)
 
-    def validate(self, source):
+    def validate(self, source, timeout=None):
         """Send a ``<validate>`` request
 
         :param str source: The datastore to validate
+
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
         """
-        self._send_rpc(validate(source))
+        self._send_rpc(validate(source), timeout)
 
     @property
     def session_id(self):
@@ -515,23 +586,29 @@ class Manager:
         except Empty:
             return None
 
-    def dispatch(self, rpc):
+    def dispatch(self, rpc, timeout=None):
         """Send an ``<rpc>`` request
 
         :param str rpc: The RPC to send; it should not include an
                         ``<rpc>`` tag (one will be generated for you)
 
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
+
         :rtype: :class:`RPCReply`
         """
-        (msg, _) = self._send_rpc(make_rpc(from_ele(rpc)))
+        (msg, _) = self._send_rpc(make_rpc(from_ele(rpc)), timeout)
         return RPCReply(msg)
 
-    def delete_config(self, target):
+    def delete_config(self, target, timeout=None):
         """Send a ``<delete-config>`` request
 
         :param str target: The datastore to delete
+
+        :param float timeout (optional): Applies a specific timeout value for this RPC call.
+               If given, this timeout is used instead of the set timeout.
         """
-        self._send_rpc(delete_config(target))
+        self._send_rpc(delete_config(target), timeout)
 
 
 class DataReply:

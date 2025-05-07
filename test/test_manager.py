@@ -96,18 +96,52 @@ class LogSentry:
         Manager.logger().setLevel(logging.NOTSET)
 
 
-def test_manager_lifecycle(session):
-    with Manager(session, timeout=1) as mgr:
-        assert mgr.timeout == 1
+@pytest.mark.parametrize(
+    "timeout_arg,timeout_set",
+    [
+        (None, Manager.DEFAULT_RPC_TIMEOUT, ),
+        (Manager.DEFAULT_RPC_TIMEOUT, Manager.DEFAULT_RPC_TIMEOUT, ),
+        (10, 10, ),
+        (300, 300, ),
+        (47.3, 47.3, ),
+        (0, Manager.DEFAULT_RPC_TIMEOUT, ),
+        (0.5, Manager.DEFAULT_RPC_TIMEOUT, ),
+        (-1, Manager.DEFAULT_RPC_TIMEOUT, ),
+        ("200", Manager.DEFAULT_RPC_TIMEOUT, ),
+    ],
+    ids=[
+        "timeout is None, expect default",
+        "timeout is default value, expect default",
+        "timeout is int(10), expect given value",
+        "timeout is int(200), expect given value",
+        "timeout is float(47.3), expect given value",
+        "timeout is zero, expect default",
+        "timeout is too small, expect default",
+        "timeout is negative, expect default",
+        "timeout has bad type (str), expect default",
+    ],
+)
+def test_manager_lifecycle(session, timeout_arg, timeout_set):
+    # test new setter and getter
+    with Manager(session) as mgr:
+        mgr.set_rpc_timeout(timeout_arg)
+        assert mgr.get_rpc_timeout() == timeout_set
+    assert session.closed
+
+    # test construction with timeout arg
+    with Manager(session, timeout=timeout_arg) as mgr:
+        assert mgr.get_rpc_timeout() == timeout_set
+        assert mgr.timeout == timeout_set
         assert mgr.log_id is None
         assert mgr.session_id() == 4711
     assert session.closed
 
-
 def test_manager_lifecycle_with_id(session):
+    assert Manager.DEFAULT_RPC_TIMEOUT == 120
+
     session.set_session_id(4712)
     with Manager(session, log_id="Raspberry Pi 3") as mgr:
-        assert mgr.timeout == 120  # default timeout
+        assert mgr.timeout == Manager.DEFAULT_RPC_TIMEOUT  # default timeout
         assert mgr.log_id == "Raspberry Pi 3"
         assert mgr.session_id() == 4712
     assert session.closed
@@ -744,6 +778,42 @@ def test_dispatch(session, fake_id):
                 ],
             ],
         )
+
+# This test calls all public RPC methods of class Manager with specific (extra) timeout argument
+# and checks whether that timeout is passed to internal Manager._send_rpc method.
+@pytest.mark.parametrize(
+    "rpc, kwargs, retval, timeout",
+    [
+        (Manager.edit_config, {'config': '<anything/>', }, None, 1, ),
+        (Manager.get, {}, (RPC_REPLY_DATA, etree.fromstring(RPC_REPLY_DATA)), 2, ),
+        (Manager.get_config, {}, (RPC_REPLY_DATA, etree.fromstring(RPC_REPLY_DATA)), 3, ),
+        (Manager.get_data, {}, (RPC_REPLY_DATA, etree.fromstring(RPC_REPLY_DATA)), 4, ),
+        (Manager.copy_config, {'target': 'running', 'source': 'startup', }, None, 5, ),
+        (Manager.discard_changes, {}, None, 6, ),
+        (Manager.commit, {}, None, 7, ),
+        (Manager.cancel_commit, {}, None, 8, ),
+        (Manager.lock, {'target': 'running', }, None, 9, ),
+        (Manager.unlock, {'target': 'running', }, None, 10, ),
+        (Manager.kill_session, {'session_id': 4712}, None, 11, ),
+        (Manager.close_session, {}, None, 12, ),
+        (Manager.create_subscription, {}, None, 13, ),
+        (Manager.validate, {'source': 'running', }, None, 14, ),
+    ],
+)
+def test_rpc_with_specific_timeout(session, rpc, kwargs, retval, timeout):
+    with patch.object(target=Manager, attribute='_send_rpc', return_value=retval) as p:
+        with Manager(session) as mgr:
+            # invoke without extra timeout parameter (use the default = None)
+            rpc(mgr, **kwargs)
+            assert p.call_count == 1
+            mock_args = p.call_args_list
+            assert mock_args[0][0][1] is None
+
+            # invoke again with timeout parameter
+            rpc(mgr, **{**kwargs, 'timeout': timeout, })
+            assert p.call_count == 2
+            mock_args = p.call_args_list
+            assert mock_args[1][0][1] == timeout
 
 
 def test_take_notification_default(session):
