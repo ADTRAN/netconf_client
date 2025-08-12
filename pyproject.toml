@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "netconf_client"
-version = "3.4.0"
+version = "3.5.0"
 description = "A Python NETCONF client"
 authors = ["ADTRAN, Inc."]
 license = "Apache-2.0"
